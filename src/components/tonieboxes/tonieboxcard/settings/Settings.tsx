@@ -176,7 +176,7 @@ export const Settings: React.FC<{ overlay: string; onClose?: () => void }> = ({
                                     return null;
                                 }
                                 if (
-                                    (option.iD.startsWith("core.client_cert.") &&
+                                    (option.iD.startsWith("core.client_cert_tb1.") &&
                                         boxGeneration !== "1") ||
                                     (option.iD.startsWith("core.client_cert_tb2.") &&
                                         boxGeneration !== "2")
@@ -186,7 +186,7 @@ export const Settings: React.FC<{ overlay: string; onClose?: () => void }> = ({
                                 if (
                                     option.iD.includes("core.settings_level") ||
                                     (!option.iD.includes("core.certdir") &&
-                                        !option.iD.includes("core.client_cert.") &&
+                                        !option.iD.includes("core.client_cert_tb1.") &&
                                         !option.iD.includes("core.client_cert_tb2.") &&
                                         !option.iD.includes("core.flex_") &&
                                         !option.iD.includes("core.contentdir") &&
