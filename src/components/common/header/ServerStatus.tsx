@@ -1,7 +1,12 @@
 import { useEffect, useState, useCallback } from "react";
 import { useTranslation } from "react-i18next";
 import { Space, Tag, Tooltip, theme } from "antd";
-import { CheckCircleOutlined, CloseCircleOutlined, LockOutlined } from "@ant-design/icons";
+import {
+    CheckCircleOutlined,
+    CloseCircleOutlined,
+    LoadingOutlined,
+    LockOutlined,
+} from "@ant-design/icons";
 
 import { defaultAPIConfig } from "../../../config/defaultApiConfig";
 import { BoxineApi, BoxineForcedApi, TeddyCloudApi } from "../../../api";
@@ -12,7 +17,33 @@ import { useTeddyCloud } from "../../../provider/TeddyCloudProvider";
 const boxineApi = new BoxineApi(defaultAPIConfig());
 const boxineForcedApi = new BoxineForcedApi(defaultAPIConfig());
 const teddyCloudApi = new TeddyCloudApi(defaultAPIConfig());
-const defaultTb2CloudHostname = "tbs2.tonie.cloud";
+const teddyCloudApiBasePath = defaultAPIConfig().basePath;
+
+type Tb2HttpsState = "disabled" | "connecting" | "tunneling" | "online" | "error";
+
+interface Tb2HttpsStatus {
+    enabled: boolean;
+    state: Tb2HttpsState;
+    hostname: string;
+    port: number;
+    bytes_box_to_upstream: number;
+    bytes_upstream_to_box: number;
+    last_attempt: number;
+    last_success: number;
+    error_code: string;
+}
+
+const defaultTb2HttpsStatus: Tb2HttpsStatus = {
+    enabled: false,
+    state: "disabled",
+    hostname: "tbs2.tonie.cloud",
+    port: 443,
+    bytes_box_to_upstream: 0,
+    bytes_upstream_to_box: 0,
+    last_attempt: 0,
+    last_success: 0,
+    error_code: "",
+};
 
 const { useToken } = theme;
 
@@ -25,8 +56,7 @@ export const ServerStatus = () => {
 
     const [boxineStatus, setBoxineStatus] = useState(false);
     const [boxineEnabledStatus, setBoxineEnabledStatus] = useState(true);
-    const [tb2CloudEnabledStatus, setTb2CloudEnabledStatus] = useState(false);
-    const [tb2CloudHostname, setTb2CloudHostname] = useState(defaultTb2CloudHostname);
+    const [tb2HttpsStatus, setTb2HttpsStatus] = useState<Tb2HttpsStatus>(defaultTb2HttpsStatus);
     const [teddyStatus, setTeddyStatus] = useState(false);
 
     const fetchBoxineEnabledStatus = useCallback(async (): Promise<boolean> => {
@@ -49,22 +79,19 @@ export const ServerStatus = () => {
         }
     }, []);
 
-    const fetchTb2CloudPlaceholderStatus = useCallback(async () => {
+    const fetchTb2HttpsStatus = useCallback(async () => {
         try {
-            const [enabledResponse, hostnameResponse] = await Promise.all([
-                teddyCloudApi.apiGetTeddyCloudSettingRaw("cloud.tb2_enabled"),
-                teddyCloudApi.apiGetTeddyCloudSettingRaw("cloud.remote_hostname_tb2"),
-            ]);
-            const [enabledText, hostnameText] = await Promise.all([
-                enabledResponse.text(),
-                hostnameResponse.text(),
-            ]);
-
-            setTb2CloudEnabledStatus(enabledText.trim().toLowerCase() === "true");
-            setTb2CloudHostname(hostnameText.trim() || defaultTb2CloudHostname);
+            const response = await fetch(`${teddyCloudApiBasePath}/api/tb2-https-upstream/status`);
+            if (!response.ok) {
+                throw new Error(`HTTP ${response.status}`);
+            }
+            setTb2HttpsStatus((await response.json()) as Tb2HttpsStatus);
         } catch {
-            setTb2CloudEnabledStatus(false);
-            setTb2CloudHostname(defaultTb2CloudHostname);
+            setTb2HttpsStatus((current) => ({
+                ...current,
+                state: current.enabled ? "error" : "disabled",
+                error_code: "status_unavailable",
+            }));
         }
     }, []);
 
@@ -99,7 +126,7 @@ export const ServerStatus = () => {
     const fetchCloudStatusUsingTimeRequests = useCallback(async () => {
         const isEnabled = await fetchBoxineEnabledStatus();
 
-        await fetchTb2CloudPlaceholderStatus();
+        await fetchTb2HttpsStatus();
         await fetchTeddyStatus();
 
         if (isEnabled) {
@@ -107,7 +134,7 @@ export const ServerStatus = () => {
         }
     }, [
         fetchBoxineEnabledStatus,
-        fetchTb2CloudPlaceholderStatus,
+        fetchTb2HttpsStatus,
         fetchTeddyStatus,
         fetchBoxineStatusWithRetries,
     ]);
@@ -117,12 +144,33 @@ export const ServerStatus = () => {
     }, [fetchCloudStatusUsingTimeRequests, fetchCloudStatus]);
 
     useEffect(() => {
+        const interval = window.setInterval(fetchTb2HttpsStatus, 5000);
+        return () => window.clearInterval(interval);
+    }, [fetchTb2HttpsStatus]);
+
+    useEffect(() => {
         setToniesCloudAvailable(boxineStatus);
     }, [boxineStatus, setToniesCloudAvailable]);
 
     const boxineBgColor = boxineEnabledStatus ? (boxineStatus ? "#87d068" : "#f50") : "#faad14";
 
-    const tb2CloudBgColor = tb2CloudEnabledStatus ? "#f50" : "#faad14";
+    const tb2HttpsBgColor =
+        tb2HttpsStatus.state === "online" || tb2HttpsStatus.state === "tunneling"
+            ? "#87d068"
+            : tb2HttpsStatus.state === "error"
+              ? "#f50"
+              : "#faad14";
+
+    const tb2HttpsIcon =
+        tb2HttpsStatus.state === "disabled" ? (
+            <LockOutlined />
+        ) : tb2HttpsStatus.state === "connecting" ? (
+            <LoadingOutlined spin />
+        ) : tb2HttpsStatus.state === "online" || tb2HttpsStatus.state === "tunneling" ? (
+            <CheckCircleOutlined />
+        ) : (
+            <CloseCircleOutlined />
+        );
 
     const teddyBgColor = teddyStatus ? "#87d068" : "#f50";
 
@@ -167,23 +215,22 @@ export const ServerStatus = () => {
             </Tooltip>
 
             <Tooltip
-                title={t(
-                    tb2CloudEnabledStatus
-                        ? "server.tb2CloudStatusOffline"
-                        : "server.tb2CloudUnavailable",
-                    { hostname: tb2CloudHostname },
-                )}
+                title={t(`server.tb2HttpsStatus.${tb2HttpsStatus.state}`, {
+                    hostname: tb2HttpsStatus.hostname,
+                    port: tb2HttpsStatus.port,
+                    errorCode: tb2HttpsStatus.error_code || "-",
+                })}
             >
                 <Tag
-                    icon={tb2CloudEnabledStatus ? <CloseCircleOutlined /> : <LockOutlined />}
+                    icon={tb2HttpsIcon}
                     style={{
                         ...commonTagStyle,
                         color: "#001529",
-                        backgroundColor: tb2CloudBgColor,
+                        backgroundColor: tb2HttpsBgColor,
                     }}
                 >
                     <HiddenDesktop>TB2</HiddenDesktop>
-                    <HiddenMobile>TB2 Cloud</HiddenMobile>
+                    <HiddenMobile>TB2 HTTPS</HiddenMobile>
                 </Tag>
             </Tooltip>
 

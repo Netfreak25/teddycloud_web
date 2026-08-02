@@ -168,7 +168,13 @@ export default class SettingsDataHandler {
                     );
                 })
                 .then(() => {
-                    if (setting.iD === "cloud.enabled" && this.setFetchCloudStatus) {
+                    const cloudStatusSettings = [
+                        "cloud.enabled",
+                        "cloud.tb2_enabled",
+                        "cloud.remote_hostname_tb2",
+                        "cloud.remote_port_tb2",
+                    ];
+                    if (cloudStatusSettings.includes(setting.iD) && this.setFetchCloudStatus) {
                         this.setFetchCloudStatus((prev) => !prev);
                     }
                 })
