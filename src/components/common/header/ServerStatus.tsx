@@ -20,6 +20,13 @@ const teddyCloudApi = new TeddyCloudApi(defaultAPIConfig());
 const teddyCloudApiBasePath = defaultAPIConfig().basePath;
 
 type Tb2HttpsState = "disabled" | "connecting" | "tunneling" | "online" | "error";
+type MqttUpstreamState =
+    | "disabled"
+    | "standby"
+    | "armed"
+    | "connecting"
+    | "tunneling"
+    | "error";
 
 interface Tb2HttpsStatus {
     enabled: boolean;
@@ -45,6 +52,32 @@ const defaultTb2HttpsStatus: Tb2HttpsStatus = {
     error_code: "",
 };
 
+interface MqttUpstreamStatus {
+    enabled: boolean;
+    passthrough_enabled: boolean;
+    state: MqttUpstreamState;
+    hostname: string;
+    port: number;
+    bytes_box_to_upstream: number;
+    bytes_upstream_to_box: number;
+    last_attempt: number;
+    last_success: number;
+    error_code: string;
+}
+
+const defaultMqttUpstreamStatus: MqttUpstreamStatus = {
+    enabled: false,
+    passthrough_enabled: false,
+    state: "disabled",
+    hostname: "ici.tonie.cloud",
+    port: 8883,
+    bytes_box_to_upstream: 0,
+    bytes_upstream_to_box: 0,
+    last_attempt: 0,
+    last_success: 0,
+    error_code: "",
+};
+
 const { useToken } = theme;
 
 const delay = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
@@ -57,6 +90,8 @@ export const ServerStatus = () => {
     const [boxineStatus, setBoxineStatus] = useState(false);
     const [boxineEnabledStatus, setBoxineEnabledStatus] = useState(true);
     const [tb2HttpsStatus, setTb2HttpsStatus] = useState<Tb2HttpsStatus>(defaultTb2HttpsStatus);
+    const [mqttUpstreamStatus, setMqttUpstreamStatus] =
+        useState<MqttUpstreamStatus>(defaultMqttUpstreamStatus);
     const [teddyStatus, setTeddyStatus] = useState(false);
 
     const fetchBoxineEnabledStatus = useCallback(async (): Promise<boolean> => {
@@ -88,6 +123,22 @@ export const ServerStatus = () => {
             setTb2HttpsStatus((await response.json()) as Tb2HttpsStatus);
         } catch {
             setTb2HttpsStatus((current) => ({
+                ...current,
+                state: current.enabled ? "error" : "disabled",
+                error_code: "status_unavailable",
+            }));
+        }
+    }, []);
+
+    const fetchMqttUpstreamStatus = useCallback(async () => {
+        try {
+            const response = await fetch(`${teddyCloudApiBasePath}/api/mqtt-client-upstream/status`);
+            if (!response.ok) {
+                throw new Error(`HTTP ${response.status}`);
+            }
+            setMqttUpstreamStatus((await response.json()) as MqttUpstreamStatus);
+        } catch {
+            setMqttUpstreamStatus((current) => ({
                 ...current,
                 state: current.enabled ? "error" : "disabled",
                 error_code: "status_unavailable",
@@ -127,6 +178,7 @@ export const ServerStatus = () => {
         const isEnabled = await fetchBoxineEnabledStatus();
 
         await fetchTb2HttpsStatus();
+        await fetchMqttUpstreamStatus();
         await fetchTeddyStatus();
 
         if (isEnabled) {
@@ -135,6 +187,7 @@ export const ServerStatus = () => {
     }, [
         fetchBoxineEnabledStatus,
         fetchTb2HttpsStatus,
+        fetchMqttUpstreamStatus,
         fetchTeddyStatus,
         fetchBoxineStatusWithRetries,
     ]);
@@ -144,9 +197,12 @@ export const ServerStatus = () => {
     }, [fetchCloudStatusUsingTimeRequests, fetchCloudStatus]);
 
     useEffect(() => {
-        const interval = window.setInterval(fetchTb2HttpsStatus, 5000);
+        const interval = window.setInterval(() => {
+            fetchTb2HttpsStatus();
+            fetchMqttUpstreamStatus();
+        }, 5000);
         return () => window.clearInterval(interval);
-    }, [fetchTb2HttpsStatus]);
+    }, [fetchMqttUpstreamStatus, fetchTb2HttpsStatus]);
 
     useEffect(() => {
         setToniesCloudAvailable(boxineStatus);
@@ -170,6 +226,24 @@ export const ServerStatus = () => {
             <CheckCircleOutlined />
         ) : (
             <CloseCircleOutlined />
+        );
+
+    const mqttUpstreamBgColor =
+        mqttUpstreamStatus.state === "tunneling"
+            ? "#87d068"
+            : mqttUpstreamStatus.state === "error"
+              ? "#f50"
+              : "#faad14";
+
+    const mqttUpstreamIcon =
+        mqttUpstreamStatus.state === "tunneling" ? (
+            <CheckCircleOutlined />
+        ) : mqttUpstreamStatus.state === "error" ? (
+            <CloseCircleOutlined />
+        ) : mqttUpstreamStatus.state === "connecting" || mqttUpstreamStatus.state === "armed" ? (
+            <LoadingOutlined spin={mqttUpstreamStatus.state === "connecting"} />
+        ) : (
+            <LockOutlined />
         );
 
     const teddyBgColor = teddyStatus ? "#87d068" : "#f50";
@@ -211,6 +285,26 @@ export const ServerStatus = () => {
                 >
                     <HiddenDesktop>B</HiddenDesktop>
                     <HiddenMobile>Boxine</HiddenMobile>
+                </Tag>
+            </Tooltip>
+
+            <Tooltip
+                title={t(`server.mqttUpstreamStatus.${mqttUpstreamStatus.state}`, {
+                    hostname: mqttUpstreamStatus.hostname,
+                    port: mqttUpstreamStatus.port,
+                    errorCode: mqttUpstreamStatus.error_code || "-",
+                })}
+            >
+                <Tag
+                    icon={mqttUpstreamIcon}
+                    style={{
+                        ...commonTagStyle,
+                        color: "#001529",
+                        backgroundColor: mqttUpstreamBgColor,
+                    }}
+                >
+                    <HiddenDesktop>ICI</HiddenDesktop>
+                    <HiddenMobile>ICI Upstream</HiddenMobile>
                 </Tag>
             </Tooltip>
 

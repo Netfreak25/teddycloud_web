@@ -75,6 +75,19 @@ export default class SettingsDataHandler {
                 setting.overlayed !== undefined ? setting.overlayed : undefined;
             setting.overlayId = overlayId;
         });
+        const upstreamEnabled = data.find(
+            (setting) => setting.iD === "mqtt_client_upstream.enabled",
+        );
+        const passthrough = data.find(
+            (setting) => setting.iD === "mqtt_client_upstream.passthrough_enabled",
+        );
+        if (upstreamEnabled && passthrough) {
+            passthrough.readOnly = upstreamEnabled.value !== true;
+            if (upstreamEnabled.value !== true) {
+                passthrough.value = false;
+                passthrough.initialValue = false;
+            }
+        }
         this.settings = data;
     }
 
@@ -107,17 +120,24 @@ export default class SettingsDataHandler {
             await api.apiTriggerWriteConfigGet();
         };
 
-        const savePromises = this.settings.map(async (setting) => {
-            if (
-                setting.initialValue !== setting.value ||
-                setting.initialOverlayed !== setting.overlayed
-            ) {
-                return this.saveSingleSetting(setting);
-            }
-        });
-
         try {
-            await Promise.all(savePromises);
+            const changedSettings = this.settings.filter(
+                (setting) =>
+                    setting.initialValue !== setting.value ||
+                    setting.initialOverlayed !== setting.overlayed,
+            );
+            const upstreamEnable = changedSettings.find(
+                (setting) =>
+                    setting.iD === "mqtt_client_upstream.enabled" && setting.value === true,
+            );
+            if (upstreamEnable) {
+                await this.saveSingleSetting(upstreamEnable);
+            }
+            await Promise.all(
+                changedSettings
+                    .filter((setting) => setting !== upstreamEnable)
+                    .map((setting) => this.saveSingleSetting(setting)),
+            );
             await triggerWriteConfig();
             this.settings.forEach((setting) => {
                 setting.initialValue = setting.value;
@@ -173,6 +193,10 @@ export default class SettingsDataHandler {
                         "cloud.tb2_enabled",
                         "cloud.remote_hostname_tb2",
                         "cloud.remote_port_tb2",
+                        "mqtt_client_upstream.enabled",
+                        "mqtt_client_upstream.passthrough_enabled",
+                        "mqtt_client_upstream.hostname",
+                        "mqtt_client_upstream.port",
                     ];
                     if (cloudStatusSettings.includes(setting.iD) && this.setFetchCloudStatus) {
                         this.setFetchCloudStatus((prev) => !prev);
@@ -226,6 +250,17 @@ export default class SettingsDataHandler {
         if (settingToChange) {
             if (typeof settingToChange.initialValue === typeof newValue) {
                 settingToChange.value = newValue;
+                if (iD === "mqtt_client_upstream.enabled") {
+                    const passthrough = this.settings.find(
+                        (setting) => setting.iD === "mqtt_client_upstream.passthrough_enabled",
+                    );
+                    if (passthrough) {
+                        passthrough.readOnly = newValue !== true;
+                        if (newValue !== true) {
+                            passthrough.value = false;
+                        }
+                    }
+                }
                 if (settingToChange.initialValue === settingToChange.value) {
                     this.unsavedChanges = false;
                     this.settings.forEach((setting) => {
