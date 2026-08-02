@@ -27,6 +27,11 @@ export const CertificatesModal: React.FC<CertificatesModalProps> = ({
     const { t } = useTranslation();
 
     const certDirOption = options?.options?.find((option) => option.iD === "core.certdir");
+    const boxGeneration = options?.options?.find(
+        (option) => option.iD === "toniebox.boxGeneration",
+    )?.value;
+    const certificateGeneration =
+        boxGeneration === "2" ? "tb2" : boxGeneration === "1" ? "tb1" : undefined;
 
     return (
         <Modal
@@ -52,7 +57,7 @@ export const CertificatesModal: React.FC<CertificatesModalProps> = ({
                     </>
                 )}
             </Paragraph>
-            <CertificateDragNDrop overlay={overlayId} />
+            <CertificateDragNDrop overlay={overlayId} generation={certificateGeneration} />
         </Modal>
     );
 };

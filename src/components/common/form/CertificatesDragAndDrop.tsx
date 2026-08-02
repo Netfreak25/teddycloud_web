@@ -13,11 +13,15 @@ const api = new TeddyCloudApi(defaultAPIConfig());
 
 interface CertificateDragNDropProps {
     overlay?: string;
+    generation?: "tb1" | "tb2";
 }
 
 type CustomRequestOptions = Parameters<NonNullable<UploadProps["customRequest"]>>[0];
 
-export const CertificateDragNDrop: React.FC<CertificateDragNDropProps> = ({ overlay }) => {
+export const CertificateDragNDrop: React.FC<CertificateDragNDropProps> = ({
+    overlay,
+    generation,
+}) => {
     const { t } = useTranslation();
     const { addNotification, setFetchCloudStatus } = useTeddyCloud();
 
@@ -46,7 +50,7 @@ export const CertificateDragNDrop: React.FC<CertificateDragNDropProps> = ({ over
         };
 
         try {
-            await api.apiUploadCertPost(payload, overlay);
+            await api.apiUploadCertPost(payload, overlay, generation);
             await triggerWriteConfig();
 
             addNotification(
