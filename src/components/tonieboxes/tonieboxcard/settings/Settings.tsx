@@ -176,6 +176,7 @@ export const Settings: React.FC<{ overlay: string; onClose?: () => void }> = ({
                                         !option.iD.includes("core.flex_") &&
                                         !option.iD.includes("core.contentdir") &&
                                         !option.iD.includes("toniebox.") &&
+                                        !option.iD.includes("toniebox2.") &&
                                         !option.iD.includes("cloud.enabled") &&
                                         !option.iD.includes("cloud.enableV1Claim") &&
                                         !option.iD.includes("cloud.enableV1CloudReset") &&
