@@ -41,7 +41,12 @@ export const CertificatesPage = () => {
                         />
                     </Paragraph>
                     <Paragraph>
-                        <CertificateDragNDrop />
+                        <h2>Toniebox 1 (TB1)</h2>
+                        <CertificateDragNDrop generation="tb1" />
+                    </Paragraph>
+                    <Paragraph>
+                        <h2>Toniebox 2 (TB2)</h2>
+                        <CertificateDragNDrop generation="tb2" />
                     </Paragraph>
                 </StyledContent>
             </StyledLayout>

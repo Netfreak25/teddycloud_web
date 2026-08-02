@@ -121,6 +121,9 @@ export const Settings: React.FC<{ overlay: string; onClose?: () => void }> = ({
     };
 
     const { colorBgElevated, colorTextDescription } = token;
+    const boxGeneration = options?.options?.find(
+        (option) => option.iD === "toniebox.boxGeneration",
+    )?.value;
 
     const savePanel = (
         <div
@@ -169,10 +172,22 @@ export const Settings: React.FC<{ overlay: string; onClose?: () => void }> = ({
                     >
                         <Form labelCol={{ span: 8 }} wrapperCol={{ span: 14 }} layout="horizontal">
                             {options?.options?.map((option, index, array) => {
+                                if (option.iD === "core.certdir_tb2") {
+                                    return null;
+                                }
+                                if (
+                                    (option.iD.startsWith("core.client_cert.") &&
+                                        boxGeneration !== "1") ||
+                                    (option.iD.startsWith("core.client_cert_tb2.") &&
+                                        boxGeneration !== "2")
+                                ) {
+                                    return null;
+                                }
                                 if (
                                     option.iD.includes("core.settings_level") ||
                                     (!option.iD.includes("core.certdir") &&
                                         !option.iD.includes("core.client_cert.") &&
+                                        !option.iD.includes("core.client_cert_tb2.") &&
                                         !option.iD.includes("core.flex_") &&
                                         !option.iD.includes("core.contentdir") &&
                                         !option.iD.includes("toniebox.") &&

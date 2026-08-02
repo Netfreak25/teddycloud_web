@@ -318,6 +318,7 @@ export class TeddyCloudApi extends runtime.BaseAPI {
     async apiUploadCertPostRaw(
         requestParameters: ApiUploadCertPostRequest,
         overlay?: String,
+        generation?: "tb1" | "tb2",
         initOverrides?: RequestInit | runtime.InitOverrideFunction,
     ): Promise<runtime.ApiResponse<string>> {
         const queryParameters: any = {};
@@ -330,9 +331,12 @@ export class TeddyCloudApi extends runtime.BaseAPI {
         let formParams: { append(param: string, value: any): any };
         let useForm = false;
 
-        let path = `/api/uploadCert`;
+        const path = `/api/uploadCert`;
         if (overlay !== "" && overlay !== undefined) {
-            path = path + "?overlay=" + overlay;
+            queryParameters["overlay"] = overlay;
+        }
+        if (generation !== undefined) {
+            queryParameters["generation"] = generation;
         }
 
         // use FormData to transmit files using content-type "multipart/form-data"
@@ -373,9 +377,15 @@ export class TeddyCloudApi extends runtime.BaseAPI {
     async apiUploadCertPost(
         requestParameters: ApiUploadCertPostRequest = {},
         overlay?: String,
+        generation?: "tb1" | "tb2",
         initOverrides?: RequestInit | runtime.InitOverrideFunction,
     ): Promise<string> {
-        const response = await this.apiUploadCertPostRaw(requestParameters, overlay, initOverrides);
+        const response = await this.apiUploadCertPostRaw(
+            requestParameters,
+            overlay,
+            generation,
+            initOverrides,
+        );
         return await response.value();
     }
 
