@@ -28,6 +28,20 @@ const VOLUME_MIN = 0;
 const VOLUME_MAX = 10;
 const CONTROL_SIZE = 36;
 
+const resolvePlaybackTracks = (tonie?: TonieCardProps): string[] => {
+    const sourceTracks = tonie?.sourceInfo?.tracks ?? [];
+    const assignedTracks = tonie?.tonieInfo.tracks ?? [];
+    const trackCount = Math.max(
+        sourceTracks.length,
+        assignedTracks.length,
+        tonie?.trackSeconds.length ?? 0,
+    );
+
+    return Array.from({ length: trackCount }, (_, index) => {
+        return sourceTracks[index]?.trim() || assignedTracks[index]?.trim() || "";
+    });
+};
+
 type TonieboxLiveControlsProps = {
     overlay: string;
     runtime: TonieboxRuntime;
@@ -54,7 +68,7 @@ export const TonieboxLiveControls = ({
     const playback = runtime.playback;
     const hasActivePlayback = playback.valid && playback.tonie !== null;
     const commandPending = commandInFlight !== undefined;
-    const tracks = tonie?.tonieInfo.tracks ?? [];
+    const tracks = useMemo(() => resolvePlaybackTracks(tonie), [tonie]);
     const chapterIndex = playback.chapter;
     const chapterNumber = chapterIndex === null ? undefined : chapterIndex + 1;
     const currentTrack =
