@@ -19,17 +19,19 @@ const boxineForcedApi = new BoxineForcedApi(defaultAPIConfig());
 const teddyCloudApi = new TeddyCloudApi(defaultAPIConfig());
 const teddyCloudApiBasePath = defaultAPIConfig().basePath;
 
-type Tb2HttpsState = "disabled" | "connecting" | "tunneling" | "online" | "error";
-type MqttUpstreamState =
+type Tb2HttpsState =
     | "disabled"
     | "standby"
     | "armed"
     | "connecting"
     | "tunneling"
+    | "online"
     | "error";
+type MqttUpstreamState = "disabled" | "standby" | "armed" | "connecting" | "tunneling" | "error";
 
 interface Tb2HttpsStatus {
     enabled: boolean;
+    passthrough_enabled: boolean;
     state: Tb2HttpsState;
     hostname: string;
     port: number;
@@ -42,6 +44,7 @@ interface Tb2HttpsStatus {
 
 const defaultTb2HttpsStatus: Tb2HttpsStatus = {
     enabled: false,
+    passthrough_enabled: false,
     state: "disabled",
     hostname: "tbs2.tonie.cloud",
     port: 443,
@@ -132,7 +135,9 @@ export const ServerStatus = () => {
 
     const fetchMqttUpstreamStatus = useCallback(async () => {
         try {
-            const response = await fetch(`${teddyCloudApiBasePath}/api/mqtt-client-upstream/status`);
+            const response = await fetch(
+                `${teddyCloudApiBasePath}/api/mqtt-client-upstream/status`,
+            );
             if (!response.ok) {
                 throw new Error(`HTTP ${response.status}`);
             }
@@ -220,8 +225,8 @@ export const ServerStatus = () => {
     const tb2HttpsIcon =
         tb2HttpsStatus.state === "disabled" ? (
             <LockOutlined />
-        ) : tb2HttpsStatus.state === "connecting" ? (
-            <LoadingOutlined spin />
+        ) : tb2HttpsStatus.state === "connecting" || tb2HttpsStatus.state === "armed" ? (
+            <LoadingOutlined spin={tb2HttpsStatus.state === "connecting"} />
         ) : tb2HttpsStatus.state === "online" || tb2HttpsStatus.state === "tunneling" ? (
             <CheckCircleOutlined />
         ) : (

@@ -88,6 +88,17 @@ export default class SettingsDataHandler {
                 passthrough.initialValue = false;
             }
         }
+        const tb2HttpsEnabled = data.find((setting) => setting.iD === "cloud.tb2_enabled");
+        const tb2HttpsPassthrough = data.find(
+            (setting) => setting.iD === "cloud.tb2_passthrough_enabled",
+        );
+        if (tb2HttpsEnabled && tb2HttpsPassthrough) {
+            tb2HttpsPassthrough.readOnly = tb2HttpsEnabled.value !== true;
+            if (tb2HttpsEnabled.value !== true) {
+                tb2HttpsPassthrough.value = false;
+                tb2HttpsPassthrough.initialValue = false;
+            }
+        }
         this.settings = data;
     }
 
@@ -191,6 +202,7 @@ export default class SettingsDataHandler {
                     const cloudStatusSettings = [
                         "cloud.enabled",
                         "cloud.tb2_enabled",
+                        "cloud.tb2_passthrough_enabled",
                         "cloud.remote_hostname_tb2",
                         "cloud.remote_port_tb2",
                         "mqtt_client_upstream.enabled",
@@ -253,6 +265,17 @@ export default class SettingsDataHandler {
                 if (iD === "mqtt_client_upstream.enabled") {
                     const passthrough = this.settings.find(
                         (setting) => setting.iD === "mqtt_client_upstream.passthrough_enabled",
+                    );
+                    if (passthrough) {
+                        passthrough.readOnly = newValue !== true;
+                        if (newValue !== true) {
+                            passthrough.value = false;
+                        }
+                    }
+                }
+                if (iD === "cloud.tb2_enabled") {
+                    const passthrough = this.settings.find(
+                        (setting) => setting.iD === "cloud.tb2_passthrough_enabled",
                     );
                     if (passthrough) {
                         passthrough.readOnly = newValue !== true;
