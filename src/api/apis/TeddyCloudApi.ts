@@ -17,7 +17,12 @@ import {
 } from "../models";
 
 import { TagTonieCard, TagTonieCardsList, TonieCardProps } from "../../types/tonieTypes";
-import { TonieboxCardsList, TonieboxCardProps } from "../../types/tonieboxTypes";
+import {
+    TonieboxCardsList,
+    TonieboxCardProps,
+    TonieboxCommandResponse,
+    TonieboxPlaybackCommand,
+} from "../../types/tonieboxTypes";
 
 export interface ApiSetCloudCacheContentPostRequest {
     body: boolean;
@@ -53,6 +58,49 @@ export class TeddyCloudApi extends runtime.BaseAPI {
     ): Promise<TonieboxCardProps[]> {
         const response = await this.apiGetTonieboxesIndexRaw(initOverrides);
         return (await response.value()).boxes;
+    }
+
+    private async apiPostTonieboxControl(
+        path: string,
+        overlay: string,
+        body?: object,
+        initOverrides?: RequestInit | runtime.InitOverrideFunction,
+    ): Promise<TonieboxCommandResponse> {
+        const response = await this.apiPostTeddyCloudRaw(
+            path,
+            body ? JSON.stringify(body) : "",
+            overlay,
+            initOverrides,
+            { "Content-Type": "application/json" },
+        );
+        const result = (await response.json()) as TonieboxCommandResponse;
+        if (!response.ok || !result.ok) {
+            throw new Error(result.error || `Toniebox command failed (${response.status})`);
+        }
+        return result;
+    }
+
+    async apiControlTonieboxPlayback(
+        overlay: string,
+        command: TonieboxPlaybackCommand,
+        initOverrides?: RequestInit | runtime.InitOverrideFunction,
+    ): Promise<TonieboxCommandResponse> {
+        return this.apiPostTonieboxControl("/api/box/playback", overlay, command, initOverrides);
+    }
+
+    async apiControlTonieboxVolume(
+        overlay: string,
+        level: number,
+        initOverrides?: RequestInit | runtime.InitOverrideFunction,
+    ): Promise<TonieboxCommandResponse> {
+        return this.apiPostTonieboxControl("/api/box/volume", overlay, { level }, initOverrides);
+    }
+
+    async apiPingToniebox(
+        overlay: string,
+        initOverrides?: RequestInit | runtime.InitOverrideFunction,
+    ): Promise<TonieboxCommandResponse> {
+        return this.apiPostTonieboxControl("/api/box/ping", overlay, undefined, initOverrides);
     }
 
     /**
