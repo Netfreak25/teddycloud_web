@@ -9,13 +9,14 @@ type SwitchFieldProps = {
     name: string;
     label?: string;
     description?: string;
+    disabled?: boolean;
     overlayed?: boolean;
     overlayId?: string;
 };
 
 export const SettingsSwitchField: React.FC<SwitchFieldProps> = (props) => {
     const { t } = useTranslation();
-    const { name, label, description, overlayed: initialOverlayed } = props;
+    const { name, label, description, disabled, overlayed: initialOverlayed } = props;
     const [field, meta] = useField(name!);
     const [overlayed, setOverlayed] = useState<boolean | undefined>(initialOverlayed); // State to track overlayed boolean
 
@@ -53,13 +54,14 @@ export const SettingsSwitchField: React.FC<SwitchFieldProps> = (props) => {
                     SettingsDataHandler.getInstance().changeSetting(name, value, overlayed);
                     setFieldValue(SettingsDataHandler.getInstance().getSetting(name)?.value);
                 }}
-                disabled={!overlayed && overlayed !== undefined}
+                disabled={disabled || (!overlayed && overlayed !== undefined)}
             />
             {overlayed === undefined ? (
                 ""
             ) : (
                 <Checkbox
                     checked={overlayed}
+                    disabled={disabled}
                     style={{ marginLeft: "16px" }}
                     onChange={(changeEventHandler) => {
                         SettingsDataHandler.getInstance().changeSettingOverlayed(

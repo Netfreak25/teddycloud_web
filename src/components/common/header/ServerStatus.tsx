@@ -12,6 +12,7 @@ import { useTeddyCloud } from "../../../provider/TeddyCloudProvider";
 const boxineApi = new BoxineApi(defaultAPIConfig());
 const boxineForcedApi = new BoxineForcedApi(defaultAPIConfig());
 const teddyCloudApi = new TeddyCloudApi(defaultAPIConfig());
+const defaultTb2CloudHostname = "tbs2.tonie.cloud";
 
 const { useToken } = theme;
 
@@ -24,6 +25,8 @@ export const ServerStatus = () => {
 
     const [boxineStatus, setBoxineStatus] = useState(false);
     const [boxineEnabledStatus, setBoxineEnabledStatus] = useState(true);
+    const [tb2CloudEnabledStatus, setTb2CloudEnabledStatus] = useState(false);
+    const [tb2CloudHostname, setTb2CloudHostname] = useState(defaultTb2CloudHostname);
     const [teddyStatus, setTeddyStatus] = useState(false);
 
     const fetchBoxineEnabledStatus = useCallback(async (): Promise<boolean> => {
@@ -43,6 +46,25 @@ export const ServerStatus = () => {
             setBoxineEnabledStatus(false);
             setBoxineStatus(false);
             return false;
+        }
+    }, []);
+
+    const fetchTb2CloudPlaceholderStatus = useCallback(async () => {
+        try {
+            const [enabledResponse, hostnameResponse] = await Promise.all([
+                teddyCloudApi.apiGetTeddyCloudSettingRaw("cloud.tb2_enabled"),
+                teddyCloudApi.apiGetTeddyCloudSettingRaw("cloud.remote_hostname_tb2"),
+            ]);
+            const [enabledText, hostnameText] = await Promise.all([
+                enabledResponse.text(),
+                hostnameResponse.text(),
+            ]);
+
+            setTb2CloudEnabledStatus(enabledText.trim().toLowerCase() === "true");
+            setTb2CloudHostname(hostnameText.trim() || defaultTb2CloudHostname);
+        } catch {
+            setTb2CloudEnabledStatus(false);
+            setTb2CloudHostname(defaultTb2CloudHostname);
         }
     }, []);
 
@@ -77,12 +99,18 @@ export const ServerStatus = () => {
     const fetchCloudStatusUsingTimeRequests = useCallback(async () => {
         const isEnabled = await fetchBoxineEnabledStatus();
 
+        await fetchTb2CloudPlaceholderStatus();
         await fetchTeddyStatus();
 
         if (isEnabled) {
             await fetchBoxineStatusWithRetries();
         }
-    }, [fetchBoxineEnabledStatus, fetchTeddyStatus, fetchBoxineStatusWithRetries]);
+    }, [
+        fetchBoxineEnabledStatus,
+        fetchTb2CloudPlaceholderStatus,
+        fetchTeddyStatus,
+        fetchBoxineStatusWithRetries,
+    ]);
 
     useEffect(() => {
         fetchCloudStatusUsingTimeRequests();
@@ -93,6 +121,8 @@ export const ServerStatus = () => {
     }, [boxineStatus, setToniesCloudAvailable]);
 
     const boxineBgColor = boxineEnabledStatus ? (boxineStatus ? "#87d068" : "#f50") : "#faad14";
+
+    const tb2CloudBgColor = tb2CloudEnabledStatus ? "#f50" : "#faad14";
 
     const teddyBgColor = teddyStatus ? "#87d068" : "#f50";
 
@@ -133,6 +163,27 @@ export const ServerStatus = () => {
                 >
                     <HiddenDesktop>B</HiddenDesktop>
                     <HiddenMobile>Boxine</HiddenMobile>
+                </Tag>
+            </Tooltip>
+
+            <Tooltip
+                title={t(
+                    tb2CloudEnabledStatus
+                        ? "server.tb2CloudStatusOffline"
+                        : "server.tb2CloudUnavailable",
+                    { hostname: tb2CloudHostname },
+                )}
+            >
+                <Tag
+                    icon={tb2CloudEnabledStatus ? <CloseCircleOutlined /> : <LockOutlined />}
+                    style={{
+                        ...commonTagStyle,
+                        color: "#001529",
+                        backgroundColor: tb2CloudBgColor,
+                    }}
+                >
+                    <HiddenDesktop>TB2</HiddenDesktop>
+                    <HiddenMobile>TB2 Cloud</HiddenMobile>
                 </Tag>
             </Tooltip>
 

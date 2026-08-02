@@ -16,7 +16,7 @@ export const SettingsOptionItem: React.FC<SettingsOptionItem> = (props) => {
     const overlayedProp = props.noOverlay ? undefined : option?.overlayed;
 
     if (option !== undefined) {
-        const { type, label, description } = option;
+        const { type, label, description, readOnly } = option;
 
         return (
             <div key={iD}>
@@ -25,6 +25,7 @@ export const SettingsOptionItem: React.FC<SettingsOptionItem> = (props) => {
                         name={iD}
                         label={label}
                         description={description}
+                        disabled={readOnly}
                         overlayed={overlayedProp}
                         overlayId={props.overlayId}
                     />

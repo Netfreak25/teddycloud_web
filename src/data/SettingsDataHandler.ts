@@ -9,6 +9,7 @@ export interface Setting {
     iD: string;
     label: string;
     overlayed: boolean | undefined;
+    readOnly?: boolean;
     shortname: string;
     type: string;
     value: boolean | string | number;

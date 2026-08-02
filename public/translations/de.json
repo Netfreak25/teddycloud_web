@@ -977,6 +977,8 @@
         "boxineDisabled": "Boxine/Toniecloud ist derzeit deaktiviert. Aktiviere die Einstellung 'Cloud enabled', um die Verbindung zu Boxine/Toniecloud wiederherzustellen.",
         "boxineStatusOffline": "Nicht mit Boxine/Toniecloud verbunden",
         "boxineStatusOnline": "Mit Boxine/Toniecloud verbunden",
+        "tb2CloudStatusOffline": "Keine HTTPS-Verbindung zum TB2-Cloud-Ziel {{hostname}}",
+        "tb2CloudUnavailable": "Die TB2-Cloud-Verbindung ist noch nicht verfügbar. Es besteht keine HTTPS-Verbindung zu {{hostname}}.",
         "teddycloudStatusOffline": "TeddyCloud Server offline",
         "teddycloudStatusOnline": "TeddyCloud Server online"
     },
