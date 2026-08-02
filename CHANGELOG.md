@@ -2,6 +2,7 @@
 
 ## 0.7.0
 
+- Added TB2 live playback state, volume and compact remote controls to Toniebox cards
 - First TB2 support (not for daily use! Search for beta testers open: [https://t.me/toniebox_reverse_engineering/74847](https://t.me/toniebox_reverse_engineering/74847))
 - Added custom tonies API
 - Enhanced condition for valid tonieInfo check

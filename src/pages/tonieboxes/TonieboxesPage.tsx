@@ -18,7 +18,7 @@ export const TonieboxesPage = () => {
     const { t } = useTranslation();
 
     const newBoxesAllowed = useNewBoxesAllowed();
-    const { tonieboxes } = useTonieboxes();
+    const { tonieboxes, refreshTonieboxes } = useTonieboxes();
 
     return (
         <>
@@ -47,7 +47,7 @@ export const TonieboxesPage = () => {
                         />
                     )}
 
-                    <TonieboxesList tonieboxCards={tonieboxes} />
+                    <TonieboxesList tonieboxCards={tonieboxes} onRefresh={refreshTonieboxes} />
                 </StyledContent>
             </StyledLayout>
         </>

@@ -29,6 +29,7 @@ import { SettingsModal } from "./modals/SettingsModal";
 import { DeleteModal } from "./modals/DeleteModal";
 import { useTriggerWriteConfig } from "./hooks/useTriggerWriteConfig";
 import { canHover } from "../../../utils/browser/browserUtils";
+import { TonieboxLiveControls } from "./live/TonieboxLiveControls";
 
 const api = new TeddyCloudApi(defaultAPIConfig());
 
@@ -40,7 +41,8 @@ export const TonieboxCard: React.FC<{
     tonieboxImages: TonieboxImage[];
     readOnly?: boolean;
     checkCC3200CFW?: boolean;
-}> = ({ tonieboxCard, tonieboxImages, readOnly = false, checkCC3200CFW = false }) => {
+    onRefresh?: () => Promise<void>;
+}> = ({ tonieboxCard, tonieboxImages, readOnly = false, checkCC3200CFW = false, onRefresh }) => {
     const { t, i18n } = useTranslation();
     const { token } = useToken();
     const { addNotification, addLoadingNotification, closeLoadingNotification } = useTeddyCloud();
@@ -66,6 +68,58 @@ export const TonieboxCard: React.FC<{
     const [isConfirmDeleteModalOpen, setIsConfirmDeleteModalOpen] = useState(false);
     const [tonieboxAccessApi, setTonieboxAccessApi] = useState<boolean>(true);
     const [modalKey, setModalKey] = useState(0);
+    const [nowPlayingTonie, setNowPlayingTonie] = useState<TonieCardProps>();
+
+    const runtime = tonieboxCard.runtime;
+    const currentRuid = runtime?.playback.ruid;
+    const isNowPlaying = Boolean(
+        runtime?.online && runtime.playback.valid && runtime.playback.tonie,
+    );
+    const hasVisibleRuntime = Boolean(
+        runtime &&
+        ((runtime.playback.valid && runtime.playback.tonie !== null) ||
+            runtime.battery.valid ||
+            runtime.headphones.valid ||
+            runtime.bedtime.valid ||
+            runtime.controls.bedtime),
+    );
+
+    useEffect(() => {
+        if (!runtime) return;
+        setTonieboxStatus(runtime.online);
+        setLastOnline(
+            runtime.lastConnection > 0
+                ? new Date(runtime.lastConnection * 1000).toLocaleString()
+                : "",
+        );
+    }, [runtime?.lastConnection, runtime?.online]);
+
+    useEffect(() => {
+        if (!currentRuid || !/^[0-9a-f]{16}$/i.test(currentRuid)) {
+            setNowPlayingTonie(undefined);
+            return;
+        }
+
+        let cancelled = false;
+        api.apiGetTagInfo(currentRuid, tonieboxCard.ID)
+            .then((tonie) => {
+                if (cancelled) return;
+                setNowPlayingTonie(tonie);
+                const playedAt = runtime?.playback.updatedAt
+                    ? new Date(runtime.playback.updatedAt * 1000).toLocaleString()
+                    : undefined;
+                setLastPlayedTonie([tonie], playedAt);
+            })
+            .catch(() => {
+                if (!cancelled) setNowPlayingTonie(undefined);
+            });
+
+        return () => {
+            cancelled = true;
+        };
+        // setLastPlayedTonie is stable for the lifetime of this card.
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [currentRuid, tonieboxCard.ID]);
 
     useEffect(() => {
         const fetchTonieboxApiAccess = async () => {
@@ -76,11 +130,13 @@ export const TonieboxCard: React.FC<{
     }, [tonieboxCard.ID, isEditSettingsModalOpen]);
 
     useEffect(() => {
-        const fetchTonieboxStatus = async () => {
-            const status = await api.apiGetTonieboxStatus(tonieboxCard.ID);
-            setTonieboxStatus(status);
-        };
-        fetchTonieboxStatus();
+        if (!runtime) {
+            const fetchTonieboxStatus = async () => {
+                const status = await api.apiGetTonieboxStatus(tonieboxCard.ID);
+                setTonieboxStatus(status);
+            };
+            fetchTonieboxStatus();
+        }
 
         const fetchTonieboxVersion = async () => {
             const versionRaw = await api.apiGetTonieboxVersion(tonieboxCard.ID);
@@ -112,9 +168,9 @@ export const TonieboxCard: React.FC<{
                 );
             }
         };
-        fetchTonieboxLastRUID();
+        if (!currentRuid) fetchTonieboxLastRUID();
 
-        if (!tonieboxStatus) {
+        if (!runtime) {
             const fetchTonieboxLastOnline = async () => {
                 const last = await api.apiGetLastOnline(tonieboxCard.ID);
                 setLastOnline(last);
@@ -565,7 +621,7 @@ export const TonieboxCard: React.FC<{
                             overflow: "hidden",
                         }}
                     >
-                        {lastPlayedTonieName}
+                        {!isNowPlaying && lastPlayedTonieName}
                         <img
                             src={defaultBoxImage}
                             alt=""
@@ -646,6 +702,15 @@ export const TonieboxCard: React.FC<{
                         : []
                 }
             >
+                {runtime && hasVisibleRuntime && (
+                    <TonieboxLiveControls
+                        overlay={tonieboxCard.ID}
+                        runtime={runtime}
+                        tonie={nowPlayingTonie}
+                        readOnly={readOnly}
+                        onRefresh={onRefresh}
+                    />
+                )}
                 <Meta
                     styles={{
                         description: {

@@ -13,7 +13,8 @@ import { useGetSettingCheckCC3200CFW } from "./hooks/useGetSettingCheckCC3200CFW
 export const TonieboxesList: React.FC<{
     tonieboxCards: TonieboxCardProps[];
     readOnly?: boolean;
-}> = ({ tonieboxCards, readOnly = false }) => {
+    onRefresh?: () => Promise<void>;
+}> = ({ tonieboxCards, readOnly = false, onRefresh }) => {
     const { t } = useTranslation();
     const { addNotification, boxModelImages, boxModelImagesLoading } = useTeddyCloud();
     const screens = Grid.useBreakpoint();
@@ -81,6 +82,7 @@ export const TonieboxesList: React.FC<{
                             tonieboxImages={boxModelImages}
                             readOnly={readOnly}
                             checkCC3200CFW={checkCC3200CFW}
+                            onRefresh={onRefresh}
                         />
                     </div>
                 ))

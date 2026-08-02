@@ -27,6 +27,7 @@ export const Home = () => {
     const {
         tonies,
         tonieboxes,
+        refreshTonieboxes,
         displayIncidentAlert,
         newBoxesAllowed,
         accessApiEnabled,
@@ -135,7 +136,11 @@ export const Home = () => {
             {loading ? (
                 <LoadingSpinner />
             ) : (
-                <TonieboxesList tonieboxCards={tonieboxes.slice(0, 4)} readOnly={true} />
+                <TonieboxesList
+                    tonieboxCards={tonieboxes.slice(0, 4)}
+                    readOnly={true}
+                    onRefresh={refreshTonieboxes}
+                />
             )}
             <Paragraph style={{ marginTop: 16 }}>
                 <Button onClick={() => navigate("/tonieboxes")}>
