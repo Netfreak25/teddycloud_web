@@ -84,6 +84,7 @@ const defaultMqttUpstreamStatus: MqttUpstreamStatus = {
 const { useToken } = theme;
 
 const delay = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+const statusTooltipZIndex = 2147483100;
 
 export const ServerStatus = () => {
     const { t } = useTranslation();
@@ -259,9 +260,15 @@ export const ServerStatus = () => {
         color: token.colorTextLightSolid,
     };
 
+    const upstreamSegmentStyle: React.CSSProperties = {
+        ...commonTagStyle,
+        marginInlineEnd: 0,
+    };
+
     return (
         <Space>
             <Tooltip
+                zIndex={statusTooltipZIndex}
                 title={
                     boxineEnabledStatus
                         ? boxineStatus
@@ -293,47 +300,54 @@ export const ServerStatus = () => {
                 </Tag>
             </Tooltip>
 
-            <Tooltip
-                title={t(`server.mqttUpstreamStatus.${mqttUpstreamStatus.state}`, {
-                    hostname: mqttUpstreamStatus.hostname,
-                    port: mqttUpstreamStatus.port,
-                    errorCode: mqttUpstreamStatus.error_code || "-",
-                })}
-            >
-                <Tag
-                    icon={mqttUpstreamIcon}
-                    style={{
-                        ...commonTagStyle,
-                        color: "#001529",
-                        backgroundColor: mqttUpstreamBgColor,
-                    }}
+            <span style={{ display: "inline-flex" }} aria-label="TB2 upstream status">
+                <Tooltip
+                    zIndex={statusTooltipZIndex}
+                    title={t(`server.mqttUpstreamStatus.${mqttUpstreamStatus.state}`, {
+                        hostname: mqttUpstreamStatus.hostname,
+                        port: mqttUpstreamStatus.port,
+                        errorCode: mqttUpstreamStatus.error_code || "-",
+                    })}
                 >
-                    <HiddenDesktop>ICI</HiddenDesktop>
-                    <HiddenMobile>ICI Upstream</HiddenMobile>
-                </Tag>
-            </Tooltip>
+                    <Tag
+                        icon={mqttUpstreamIcon}
+                        style={{
+                            ...upstreamSegmentStyle,
+                            color: "#001529",
+                            backgroundColor: mqttUpstreamBgColor,
+                            borderStartEndRadius: 0,
+                            borderEndEndRadius: 0,
+                        }}
+                    >
+                        ICI
+                    </Tag>
+                </Tooltip>
+
+                <Tooltip
+                    zIndex={statusTooltipZIndex}
+                    title={t(`server.tb2HttpsStatus.${tb2HttpsStatus.state}`, {
+                        hostname: tb2HttpsStatus.hostname,
+                        port: tb2HttpsStatus.port,
+                        errorCode: tb2HttpsStatus.error_code || "-",
+                    })}
+                >
+                    <Tag
+                        icon={tb2HttpsIcon}
+                        style={{
+                            ...upstreamSegmentStyle,
+                            color: "#001529",
+                            backgroundColor: tb2HttpsBgColor,
+                            borderStartStartRadius: 0,
+                            borderEndStartRadius: 0,
+                        }}
+                    >
+                        TONIES
+                    </Tag>
+                </Tooltip>
+            </span>
 
             <Tooltip
-                title={t(`server.tb2HttpsStatus.${tb2HttpsStatus.state}`, {
-                    hostname: tb2HttpsStatus.hostname,
-                    port: tb2HttpsStatus.port,
-                    errorCode: tb2HttpsStatus.error_code || "-",
-                })}
-            >
-                <Tag
-                    icon={tb2HttpsIcon}
-                    style={{
-                        ...commonTagStyle,
-                        color: "#001529",
-                        backgroundColor: tb2HttpsBgColor,
-                    }}
-                >
-                    <HiddenDesktop>TB2</HiddenDesktop>
-                    <HiddenMobile>TB2 HTTPS</HiddenMobile>
-                </Tag>
-            </Tooltip>
-
-            <Tooltip
+                zIndex={statusTooltipZIndex}
                 title={
                     teddyStatus
                         ? t("server.teddycloudStatusOnline")
