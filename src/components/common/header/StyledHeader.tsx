@@ -31,12 +31,17 @@ const StyledHeaderComponent = styled(Header)`
     align-items: center;
     padding: 0 16px;
     background: #141414;
+
+    @media (max-width: 767px) {
+        padding: 0 8px;
+    }
 `;
 
 const StyledRightPart = styled.div`
     margin-left: auto;
     display: flex;
     align-items: center;
+    min-width: 0;
 `;
 
 const StyledMenu = styled(Menu)`
@@ -198,7 +203,12 @@ export const StyledHeader = ({
         <StyledHeaderComponent id="teddycloud-header">
             <Link
                 to="/"
-                style={{ color: "white", display: "flex", alignItems: "center", marginRight: 16 }}
+                style={{
+                    color: "white",
+                    display: "flex",
+                    alignItems: "center",
+                    marginRight: isMobile ? 8 : 16,
+                }}
             >
                 <StyledLogo className="teddycloud-logo" src={logoImg} />
                 <HiddenMobile style={{ textWrap: "nowrap" }}> TeddyCloud</HiddenMobile>

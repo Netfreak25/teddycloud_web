@@ -1,6 +1,6 @@
 import { useEffect, useState, useCallback } from "react";
 import { useTranslation } from "react-i18next";
-import { Space, Tag, Tooltip, theme } from "antd";
+import { Grid, Space, Tag, Tooltip, theme } from "antd";
 import {
     CheckCircleOutlined,
     CloseCircleOutlined,
@@ -88,6 +88,8 @@ const statusTooltipZIndex = 2147483100;
 export const ServerStatus = () => {
     const { t } = useTranslation();
     const { token } = useToken();
+    const screens = Grid.useBreakpoint();
+    const compactMobileLayout = screens.md !== true;
     const { fetchCloudStatus, setToniesCloudAvailable } = useTeddyCloud();
 
     const [boxineStatus, setBoxineStatus] = useState(false);
@@ -257,6 +259,7 @@ export const ServerStatus = () => {
         cursor: "help",
         border: 0,
         color: token.colorTextLightSolid,
+        paddingInline: compactMobileLayout ? 5 : undefined,
     };
 
     const upstreamSegmentStyle: React.CSSProperties = {
@@ -265,7 +268,7 @@ export const ServerStatus = () => {
     };
 
     return (
-        <Space size={4}>
+        <Space size={compactMobileLayout ? 2 : 4}>
             <Tooltip
                 zIndex={statusTooltipZIndex}
                 title={
@@ -339,7 +342,7 @@ export const ServerStatus = () => {
                             borderEndStartRadius: 0,
                         }}
                     >
-                        TONIES
+                        {compactMobileLayout ? "TON" : "TONIES"}
                     </Tag>
                 </Tooltip>
             </span>
@@ -358,7 +361,7 @@ export const ServerStatus = () => {
                         ...commonTagStyle,
                         backgroundColor: teddyBgColor,
                         color: "#001529",
-                        marginRight: 8,
+                        marginRight: compactMobileLayout ? 4 : 8,
                     }}
                 >
                     TC

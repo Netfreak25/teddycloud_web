@@ -1,4 +1,4 @@
-import { Badge, Collapse, Input, Segmented, Space, Switch, Tooltip, Typography } from "antd";
+import { Badge, Collapse, Grid, Input, Segmented, Space, Switch, Tooltip, Typography } from "antd";
 import { useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import SettingsDataHandler, { Setting } from "../../../data/SettingsDataHandler";
@@ -56,6 +56,8 @@ export const MqttForwardingFilters: React.FC<Props> = ({ optionIds, overlayId })
     const [, setRevision] = useState(0);
     const [logSearch, setLogSearch] = useState("");
     const handler = SettingsDataHandler.getInstance();
+    const screens = Grid.useBreakpoint();
+    const compactDesktopLayout = screens.md === true;
 
     useEffect(() => {
         const listener = () => setRevision((revision) => revision + 1);
@@ -98,23 +100,9 @@ export const MqttForwardingFilters: React.FC<Props> = ({ optionIds, overlayId })
         setRevision((revision) => revision + 1);
     };
 
-    const renderSetting = (setting: Setting) => (
-        <div
-            key={setting.iD}
-            style={{
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "space-between",
-                gap: 12,
-                minHeight: 32,
-            }}
-        >
-            <Tooltip title={setting.description}>
-                <Typography.Text style={{ overflowWrap: "anywhere" }}>
-                    {setting.label}
-                </Typography.Text>
-            </Tooltip>
-            {overlayId === undefined ? (
+    const renderSetting = (setting: Setting) => {
+        const control =
+            overlayId === undefined ? (
                 <Switch
                     checked={setting.value === true}
                     onChange={(value) => changeGlobal(setting, value)}
@@ -136,9 +124,29 @@ export const MqttForwardingFilters: React.FC<Props> = ({ optionIds, overlayId })
                     ]}
                     onChange={(value) => changeOverlay(setting, value)}
                 />
-            )}
-        </div>
-    );
+            );
+
+        return (
+            <div
+                key={setting.iD}
+                style={{
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: compactDesktopLayout ? "flex-start" : "space-between",
+                    gap: 12,
+                    minHeight: 32,
+                }}
+            >
+                {compactDesktopLayout && control}
+                <Tooltip title={setting.description}>
+                    <Typography.Text style={{ overflowWrap: "anywhere" }}>
+                        {setting.label}
+                    </Typography.Text>
+                </Tooltip>
+                {!compactDesktopLayout && control}
+            </div>
+        );
+    };
 
     const collapseItems = groups.map((group) => {
         let groupSettings = settings.filter((setting) => group.matches(setting.iD));
