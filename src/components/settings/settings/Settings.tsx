@@ -9,6 +9,7 @@ import LoadingSpinner from "../../common/elements/LoadingSpinner";
 import SettingsButton from "../../common/buttons/SettingsButtons";
 import { SettingsOptionItem } from "../../common/form/SettingsOptionItem";
 import { MqttForwardingFilters } from "../../common/form/MqttForwardingFilters";
+import { CloudSettingsGroups } from "../../common/form/CloudSettingsGroups";
 import { useSettingsData } from "./hooks/useSettingsData";
 import { useStickySavePanel } from "./hooks/useStickySavePanel";
 
@@ -32,6 +33,9 @@ export const Settings: React.FC = () => {
     const mqttForwardingOptionIds = settingsOptions
         .map((option) => option.iD)
         .filter((id) => id.startsWith("mqtt_client_upstream.forward."));
+    const cloudOptionIds = settingsOptions
+        .map((option) => option.iD)
+        .filter((id) => id.startsWith("cloud."));
 
     const savePanel = (
         <div
@@ -103,6 +107,14 @@ export const Settings: React.FC = () => {
                                     <MqttForwardingFilters
                                         key="mqtt-forwarding-filters"
                                         optionIds={mqttForwardingOptionIds}
+                                    />
+                                ) : null;
+                            }
+                            if (optionId.startsWith("cloud.")) {
+                                return optionId === cloudOptionIds[0] ? (
+                                    <CloudSettingsGroups
+                                        key="cloud-settings-groups"
+                                        optionIds={cloudOptionIds}
                                     />
                                 ) : null;
                             }

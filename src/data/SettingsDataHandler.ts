@@ -19,6 +19,7 @@ export interface Setting {
 }
 
 const api = new TeddyCloudApi(defaultAPIConfig());
+const TB2_HTTPS_MODE_SETTINGS = ["cloud.tb2_enabled", "cloud.tb2_v3_enabled"];
 
 export default class SettingsDataHandler {
     private static instance: SettingsDataHandler | undefined = undefined;
@@ -88,17 +89,6 @@ export default class SettingsDataHandler {
                 passthrough.initialValue = false;
             }
         }
-        const tb2HttpsEnabled = data.find((setting) => setting.iD === "cloud.tb2_enabled");
-        const tb2HttpsPassthrough = data.find(
-            (setting) => setting.iD === "cloud.tb2_passthrough_enabled",
-        );
-        if (tb2HttpsEnabled && tb2HttpsPassthrough) {
-            tb2HttpsPassthrough.readOnly = tb2HttpsEnabled.value !== true;
-            if (tb2HttpsEnabled.value !== true) {
-                tb2HttpsPassthrough.value = false;
-                tb2HttpsPassthrough.initialValue = false;
-            }
-        }
         this.settings = data;
     }
 
@@ -144,9 +134,17 @@ export default class SettingsDataHandler {
             if (upstreamEnable) {
                 await this.saveSingleSetting(upstreamEnable);
             }
+            const tb2HttpsModeEnable = changedSettings.find(
+                (setting) => TB2_HTTPS_MODE_SETTINGS.includes(setting.iD) && setting.value === true,
+            );
+            if (tb2HttpsModeEnable) {
+                await this.saveSingleSetting(tb2HttpsModeEnable);
+            }
             await Promise.all(
                 changedSettings
-                    .filter((setting) => setting !== upstreamEnable)
+                    .filter(
+                        (setting) => setting !== upstreamEnable && setting !== tb2HttpsModeEnable,
+                    )
                     .map((setting) => this.saveSingleSetting(setting)),
             );
             await triggerWriteConfig();
@@ -202,7 +200,7 @@ export default class SettingsDataHandler {
                     const cloudStatusSettings = [
                         "cloud.enabled",
                         "cloud.tb2_enabled",
-                        "cloud.tb2_passthrough_enabled",
+                        "cloud.tb2_v3_enabled",
                         "cloud.remote_hostname_tb2",
                         "cloud.remote_port_tb2",
                         "mqtt_client_upstream.enabled",
@@ -273,14 +271,15 @@ export default class SettingsDataHandler {
                         }
                     }
                 }
-                if (iD === "cloud.tb2_enabled") {
-                    const passthrough = this.settings.find(
-                        (setting) => setting.iD === "cloud.tb2_passthrough_enabled",
+                if (TB2_HTTPS_MODE_SETTINGS.includes(iD) && newValue === true) {
+                    const otherMode = this.settings.find(
+                        (setting) =>
+                            TB2_HTTPS_MODE_SETTINGS.includes(setting.iD) && setting.iD !== iD,
                     );
-                    if (passthrough) {
-                        passthrough.readOnly = newValue !== true;
-                        if (newValue !== true) {
-                            passthrough.value = false;
+                    if (otherMode) {
+                        otherMode.value = false;
+                        if (settingToChange.overlayId !== undefined) {
+                            otherMode.overlayed = true;
                         }
                     }
                 }

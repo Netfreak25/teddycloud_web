@@ -20,17 +20,19 @@ const teddyCloudApiBasePath = defaultAPIConfig().basePath;
 
 type Tb2HttpsState =
     | "disabled"
-    | "standby"
-    | "armed"
+    | "ready"
+    | "request_active"
     | "connecting"
     | "tunneling"
-    | "online"
+    | "success"
     | "error";
+type Tb2HttpsMode = "disabled" | "v3" | "transparent" | "mixed";
 type MqttUpstreamState = "disabled" | "standby" | "armed" | "connecting" | "tunneling" | "error";
 
 interface Tb2HttpsStatus {
     enabled: boolean;
     passthrough_enabled: boolean;
+    mode: Tb2HttpsMode;
     state: Tb2HttpsState;
     hostname: string;
     port: number;
@@ -39,11 +41,35 @@ interface Tb2HttpsStatus {
     last_attempt: number;
     last_success: number;
     error_code: string;
+    mode_counts: {
+        v3: number;
+        transparent: number;
+        disabled: number;
+    };
+    v3: {
+        state: "ready" | "request_active" | "success" | "error";
+        active_requests: number;
+        last_attempt: number;
+        last_success: number;
+        last_http_status: number;
+        last_endpoint: string;
+        error_code: string;
+    };
+    transparent: {
+        state: "ready" | "connecting" | "tunneling" | "success" | "error";
+        active_sessions: number;
+        bytes_box_to_upstream: number;
+        bytes_upstream_to_box: number;
+        last_attempt: number;
+        last_success: number;
+        error_code: string;
+    };
 }
 
 const defaultTb2HttpsStatus: Tb2HttpsStatus = {
     enabled: false,
     passthrough_enabled: false,
+    mode: "disabled",
     state: "disabled",
     hostname: "tbs2.tonie.cloud",
     port: 443,
@@ -52,6 +78,25 @@ const defaultTb2HttpsStatus: Tb2HttpsStatus = {
     last_attempt: 0,
     last_success: 0,
     error_code: "",
+    mode_counts: { v3: 0, transparent: 0, disabled: 0 },
+    v3: {
+        state: "ready",
+        active_requests: 0,
+        last_attempt: 0,
+        last_success: 0,
+        last_http_status: 0,
+        last_endpoint: "",
+        error_code: "",
+    },
+    transparent: {
+        state: "ready",
+        active_sessions: 0,
+        bytes_box_to_upstream: 0,
+        bytes_upstream_to_box: 0,
+        last_attempt: 0,
+        last_success: 0,
+        error_code: "",
+    },
 };
 
 interface MqttUpstreamStatus {
@@ -218,7 +263,7 @@ export const ServerStatus = () => {
     const boxineBgColor = boxineEnabledStatus ? (boxineStatus ? "#87d068" : "#f50") : "#faad14";
 
     const tb2HttpsBgColor =
-        tb2HttpsStatus.state === "online" || tb2HttpsStatus.state === "tunneling"
+        tb2HttpsStatus.state === "success" || tb2HttpsStatus.state === "tunneling"
             ? "#87d068"
             : tb2HttpsStatus.state === "error"
               ? "#f50"
@@ -227,9 +272,11 @@ export const ServerStatus = () => {
     const tb2HttpsIcon =
         tb2HttpsStatus.state === "disabled" ? (
             <LockOutlined />
-        ) : tb2HttpsStatus.state === "connecting" || tb2HttpsStatus.state === "armed" ? (
-            <LoadingOutlined spin={tb2HttpsStatus.state === "connecting"} />
-        ) : tb2HttpsStatus.state === "online" || tb2HttpsStatus.state === "tunneling" ? (
+        ) : tb2HttpsStatus.state === "connecting" || tb2HttpsStatus.state === "request_active" ? (
+            <LoadingOutlined spin />
+        ) : tb2HttpsStatus.state === "success" ||
+          tb2HttpsStatus.state === "tunneling" ||
+          tb2HttpsStatus.state === "ready" ? (
             <CheckCircleOutlined />
         ) : (
             <CloseCircleOutlined />
@@ -266,6 +313,27 @@ export const ServerStatus = () => {
         ...commonTagStyle,
         marginInlineEnd: 0,
     };
+
+    const tb2ModeLabel = t(`server.tb2HttpsMode.${tb2HttpsStatus.mode}`);
+    const tb2HttpsTooltip = (
+        <div>
+            <div>{t("server.tb2HttpsMode.active", { mode: tb2ModeLabel })}</div>
+            <div>
+                {t(`server.tb2HttpsStatus.${tb2HttpsStatus.state}`, {
+                    hostname: tb2HttpsStatus.hostname,
+                    port: tb2HttpsStatus.port,
+                    errorCode: tb2HttpsStatus.error_code || "-",
+                })}
+            </div>
+            {tb2HttpsStatus.v3.last_http_status > 0 && (
+                <div>
+                    {t("server.tb2HttpsStatus.httpStatus", {
+                        httpStatus: tb2HttpsStatus.v3.last_http_status,
+                    })}
+                </div>
+            )}
+        </div>
+    );
 
     return (
         <Space size={compactMobileLayout ? 2 : 4}>
@@ -324,14 +392,7 @@ export const ServerStatus = () => {
                     </Tag>
                 </Tooltip>
 
-                <Tooltip
-                    zIndex={statusTooltipZIndex}
-                    title={t(`server.tb2HttpsStatus.${tb2HttpsStatus.state}`, {
-                        hostname: tb2HttpsStatus.hostname,
-                        port: tb2HttpsStatus.port,
-                        errorCode: tb2HttpsStatus.error_code || "-",
-                    })}
-                >
+                <Tooltip zIndex={statusTooltipZIndex} title={tb2HttpsTooltip}>
                     <Tag
                         icon={tb2HttpsIcon}
                         style={{

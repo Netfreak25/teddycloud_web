@@ -11,6 +11,11 @@ import { NotificationTypeEnum } from "../../../../types/teddyCloudNotificationTy
 import { useTeddyCloud } from "../../../../provider/TeddyCloudProvider";
 import { SettingsOptionItem } from "../../../common/form/SettingsOptionItem";
 import { MqttForwardingFilters } from "../../../common/form/MqttForwardingFilters";
+import { CloudSettingsGroups } from "../../../common/form/CloudSettingsGroups";
+import {
+    isSettingVisibleForBoxGeneration,
+    normalizeBoxGeneration,
+} from "../../../common/form/settingsVisibility";
 import SettingsButton from "../../../common/buttons/SettingsButtons";
 import SettingsDataHandler from "../../../../data/SettingsDataHandler";
 import { useTriggerWriteConfig } from "../hooks/useTriggerWriteConfig";
@@ -122,12 +127,15 @@ export const Settings: React.FC<{ overlay: string; onClose?: () => void }> = ({
     };
 
     const { colorBgElevated, colorTextDescription } = token;
-    const boxGeneration = options?.options?.find(
-        (option) => option.iD === "toniebox.boxGeneration",
-    )?.value;
+    const boxGeneration = normalizeBoxGeneration(
+        options?.options?.find((option) => option.iD === "toniebox.boxGeneration")?.value,
+    );
     const mqttForwardingOptionIds = (options?.options ?? [])
         .map((option) => option.iD)
         .filter((id) => id.startsWith("mqtt_client_upstream.forward."));
+    const cloudOptionIds = (options?.options ?? [])
+        .map((option) => option.iD)
+        .filter((id) => id.startsWith("cloud."));
 
     const savePanel = (
         <div
@@ -176,8 +184,19 @@ export const Settings: React.FC<{ overlay: string; onClose?: () => void }> = ({
                     >
                         <Form labelCol={{ span: 8 }} wrapperCol={{ span: 14 }} layout="horizontal">
                             {options?.options?.map((option, index, array) => {
+                                if (option.iD.startsWith("cloud.")) {
+                                    return option.iD === cloudOptionIds[0] ? (
+                                        <CloudSettingsGroups
+                                            key="cloud-settings-groups"
+                                            optionIds={cloudOptionIds}
+                                            overlayId={overlay}
+                                            boxGeneration={boxGeneration}
+                                        />
+                                    ) : null;
+                                }
                                 if (option.iD.startsWith("mqtt_client_upstream.forward.")) {
-                                    return option.iD === mqttForwardingOptionIds[0] ? (
+                                    return boxGeneration === "tb2" &&
+                                        option.iD === mqttForwardingOptionIds[0] ? (
                                         <MqttForwardingFilters
                                             key="mqtt-forwarding-filters"
                                             optionIds={mqttForwardingOptionIds}
@@ -188,12 +207,7 @@ export const Settings: React.FC<{ overlay: string; onClose?: () => void }> = ({
                                 if (option.iD === "core.certdir_tb2") {
                                     return null;
                                 }
-                                if (
-                                    (option.iD.startsWith("core.client_cert_tb1.") &&
-                                        boxGeneration !== "1") ||
-                                    (option.iD.startsWith("core.client_cert_tb2.") &&
-                                        boxGeneration !== "2")
-                                ) {
+                                if (!isSettingVisibleForBoxGeneration(option.iD, boxGeneration)) {
                                     return null;
                                 }
                                 if (
@@ -204,23 +218,7 @@ export const Settings: React.FC<{ overlay: string; onClose?: () => void }> = ({
                                         !option.iD.includes("core.flex_") &&
                                         !option.iD.includes("core.contentdir") &&
                                         !option.iD.includes("toniebox.") &&
-                                        !option.iD.includes("toniebox2.") &&
-                                        !option.iD.includes("cloud.enabled") &&
-                                        !option.iD.includes("cloud.enableV1Claim") &&
-                                        !option.iD.includes("cloud.enableV1CloudReset") &&
-                                        !option.iD.includes("cloud.enableV1FreshnessCheck") &&
-                                        !option.iD.includes("cloud.enableV1Log") &&
-                                        !option.iD.includes("cloud.enableV1Time") &&
-                                        !option.iD.includes("cloud.enableV1Ota") &&
-                                        !option.iD.includes("cloud.enableV2Content") &&
-                                        !option.iD.includes("cloud.cacheOta") &&
-                                        !option.iD.includes("cloud.localOta") &&
-                                        !option.iD.includes("cloud.cacheContent") &&
-                                        !option.iD.includes("cloud.cacheToLibrary") &&
-                                        !option.iD.includes("cloud.markCustomTagByPass") &&
-                                        !option.iD.includes("cloud.prioCustomContent") &&
-                                        !option.iD.includes("cloud.updateOnLowerAudioId") &&
-                                        !option.iD.includes("cloud.dumpRuidAuthContentJson"))
+                                        !option.iD.includes("toniebox2."))
                                 ) {
                                     return null;
                                 }
