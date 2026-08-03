@@ -8,6 +8,7 @@ import { useTeddyCloud } from "../../../provider/TeddyCloudProvider";
 import LoadingSpinner from "../../common/elements/LoadingSpinner";
 import SettingsButton from "../../common/buttons/SettingsButtons";
 import { SettingsOptionItem } from "../../common/form/SettingsOptionItem";
+import { MqttForwardingFilters } from "../../common/form/MqttForwardingFilters";
 import { useSettingsData } from "./hooks/useSettingsData";
 import { useStickySavePanel } from "./hooks/useStickySavePanel";
 
@@ -28,6 +29,9 @@ export const Settings: React.FC = () => {
     const { footerHeight, showArrow } = useStickySavePanel();
 
     const settingsOptions: SettingsOption[] = (options?.options ?? []) as SettingsOption[];
+    const mqttForwardingOptionIds = settingsOptions
+        .map((option) => option.iD)
+        .filter((id) => id.startsWith("mqtt_client_upstream.forward."));
 
     const savePanel = (
         <div
@@ -93,6 +97,14 @@ export const Settings: React.FC = () => {
 
                             if (optionId.includes("core.settings_level")) {
                                 return null;
+                            }
+                            if (optionId.startsWith("mqtt_client_upstream.forward.")) {
+                                return optionId === mqttForwardingOptionIds[0] ? (
+                                    <MqttForwardingFilters
+                                        key="mqtt-forwarding-filters"
+                                        optionIds={mqttForwardingOptionIds}
+                                    />
+                                ) : null;
                             }
 
                             const parts = optionId.split(".");

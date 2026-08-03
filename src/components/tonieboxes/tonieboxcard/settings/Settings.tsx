@@ -10,6 +10,7 @@ import LoadingSpinner from "../../../common/elements/LoadingSpinner";
 import { NotificationTypeEnum } from "../../../../types/teddyCloudNotificationTypes";
 import { useTeddyCloud } from "../../../../provider/TeddyCloudProvider";
 import { SettingsOptionItem } from "../../../common/form/SettingsOptionItem";
+import { MqttForwardingFilters } from "../../../common/form/MqttForwardingFilters";
 import SettingsButton from "../../../common/buttons/SettingsButtons";
 import SettingsDataHandler from "../../../../data/SettingsDataHandler";
 import { useTriggerWriteConfig } from "../hooks/useTriggerWriteConfig";
@@ -124,6 +125,9 @@ export const Settings: React.FC<{ overlay: string; onClose?: () => void }> = ({
     const boxGeneration = options?.options?.find(
         (option) => option.iD === "toniebox.boxGeneration",
     )?.value;
+    const mqttForwardingOptionIds = (options?.options ?? [])
+        .map((option) => option.iD)
+        .filter((id) => id.startsWith("mqtt_client_upstream.forward."));
 
     const savePanel = (
         <div
@@ -172,6 +176,15 @@ export const Settings: React.FC<{ overlay: string; onClose?: () => void }> = ({
                     >
                         <Form labelCol={{ span: 8 }} wrapperCol={{ span: 14 }} layout="horizontal">
                             {options?.options?.map((option, index, array) => {
+                                if (option.iD.startsWith("mqtt_client_upstream.forward.")) {
+                                    return option.iD === mqttForwardingOptionIds[0] ? (
+                                        <MqttForwardingFilters
+                                            key="mqtt-forwarding-filters"
+                                            optionIds={mqttForwardingOptionIds}
+                                            overlayId={overlay}
+                                        />
+                                    ) : null;
+                                }
                                 if (option.iD === "core.certdir_tb2") {
                                     return null;
                                 }

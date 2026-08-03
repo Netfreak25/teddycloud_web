@@ -1042,6 +1042,14 @@
         "information": "Information",
         "keepScrolling": "Keep scrolling to see more options.",
         "legacyGui": "Legacy Admin GUI",
+        "mqttForwarding": {
+            "suppress": "Suppress",
+            "description": "Enabled switches forward the corresponding topic in both directions.",
+            "forward": "Forward",
+            "global": "Use global",
+            "searchSources": "Search log sources",
+            "title": "Bidirectional forwarding filters"
+        },
         "levelLabel": "Settings level",
         "navigationTitle": "Settings",
         "notifications": {
