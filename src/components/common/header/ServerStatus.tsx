@@ -11,7 +11,6 @@ import {
 import { defaultAPIConfig } from "../../../config/defaultApiConfig";
 import { BoxineApi, BoxineForcedApi, TeddyCloudApi } from "../../../api";
 
-import { HiddenDesktop, HiddenMobile } from "../StyledComponents";
 import { useTeddyCloud } from "../../../provider/TeddyCloudProvider";
 
 const boxineApi = new BoxineApi(defaultAPIConfig());
@@ -266,7 +265,7 @@ export const ServerStatus = () => {
     };
 
     return (
-        <Space>
+        <Space size={4}>
             <Tooltip
                 zIndex={statusTooltipZIndex}
                 title={
@@ -295,8 +294,7 @@ export const ServerStatus = () => {
                         backgroundColor: boxineBgColor,
                     }}
                 >
-                    <HiddenDesktop>B</HiddenDesktop>
-                    <HiddenMobile>Boxine</HiddenMobile>
+                    BOX
                 </Tag>
             </Tooltip>
 
@@ -363,8 +361,7 @@ export const ServerStatus = () => {
                         marginRight: 8,
                     }}
                 >
-                    <HiddenDesktop>TC</HiddenDesktop>
-                    <HiddenMobile>TeddyCloud</HiddenMobile>
+                    TC
                 </Tag>
             </Tooltip>
         </Space>
