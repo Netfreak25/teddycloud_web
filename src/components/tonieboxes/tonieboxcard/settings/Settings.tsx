@@ -9,13 +9,8 @@ import { defaultAPIConfig } from "../../../../config/defaultApiConfig";
 import LoadingSpinner from "../../../common/elements/LoadingSpinner";
 import { NotificationTypeEnum } from "../../../../types/teddyCloudNotificationTypes";
 import { useTeddyCloud } from "../../../../provider/TeddyCloudProvider";
-import { SettingsOptionItem } from "../../../common/form/SettingsOptionItem";
-import { MqttForwardingFilters } from "../../../common/form/MqttForwardingFilters";
-import { CloudSettingsGroups } from "../../../common/form/CloudSettingsGroups";
-import {
-    isSettingVisibleForBoxGeneration,
-    normalizeBoxGeneration,
-} from "../../../common/form/settingsVisibility";
+import { SettingsScopeTabs } from "../../../common/form/SettingsScopeTabs";
+import { normalizeBoxGeneration } from "../../../common/form/settingsLayout";
 import SettingsButton from "../../../common/buttons/SettingsButtons";
 import SettingsDataHandler from "../../../../data/SettingsDataHandler";
 import { useTriggerWriteConfig } from "../hooks/useTriggerWriteConfig";
@@ -130,12 +125,7 @@ export const Settings: React.FC<{ overlay: string; onClose?: () => void }> = ({
     const boxGeneration = normalizeBoxGeneration(
         options?.options?.find((option) => option.iD === "toniebox.boxGeneration")?.value,
     );
-    const mqttForwardingOptionIds = (options?.options ?? [])
-        .map((option) => option.iD)
-        .filter((id) => id.startsWith("mqtt_client_upstream.forward."));
-    const cloudOptionIds = (options?.options ?? [])
-        .map((option) => option.iD)
-        .filter((id) => id.startsWith("cloud."));
+    const optionIds = (options?.options ?? []).map((option) => option.iD);
 
     const savePanel = (
         <div
@@ -183,87 +173,11 @@ export const Settings: React.FC<{ overlay: string; onClose?: () => void }> = ({
                         }}
                     >
                         <Form labelCol={{ span: 8 }} wrapperCol={{ span: 14 }} layout="horizontal">
-                            {options?.options?.map((option, index, array) => {
-                                if (option.iD.startsWith("cloud.")) {
-                                    return option.iD === cloudOptionIds[0] ? (
-                                        <CloudSettingsGroups
-                                            key="cloud-settings-groups"
-                                            optionIds={cloudOptionIds}
-                                            overlayId={overlay}
-                                            boxGeneration={boxGeneration}
-                                        />
-                                    ) : null;
-                                }
-                                if (option.iD.startsWith("mqtt_client_upstream.forward.")) {
-                                    return boxGeneration === "tb2" &&
-                                        option.iD === mqttForwardingOptionIds[0] ? (
-                                        <MqttForwardingFilters
-                                            key="mqtt-forwarding-filters"
-                                            optionIds={mqttForwardingOptionIds}
-                                            overlayId={overlay}
-                                        />
-                                    ) : null;
-                                }
-                                if (option.iD === "core.certdir_tb2") {
-                                    return null;
-                                }
-                                if (!isSettingVisibleForBoxGeneration(option.iD, boxGeneration)) {
-                                    return null;
-                                }
-                                if (
-                                    option.iD.includes("core.settings_level") ||
-                                    (!option.iD.includes("core.certdir") &&
-                                        !option.iD.includes("core.client_cert_tb1.") &&
-                                        !option.iD.includes("core.client_cert_tb2.") &&
-                                        !option.iD.includes("core.flex_") &&
-                                        !option.iD.includes("core.contentdir") &&
-                                        !option.iD.includes("toniebox.") &&
-                                        !option.iD.includes("toniebox2."))
-                                ) {
-                                    return null;
-                                }
-
-                                const parts = option.iD.split(".");
-                                const lastParts = array[index - 1]
-                                    ? array[index - 1].iD.split(".")
-                                    : [];
-                                return (
-                                    <React.Fragment key={index}>
-                                        {parts.slice(0, -1).map((part, partIndex) => {
-                                            if (lastParts[partIndex] !== part) {
-                                                if (partIndex === 0) {
-                                                    return (
-                                                        <h3
-                                                            style={{
-                                                                marginLeft: `${partIndex * 20}px`,
-                                                                marginBottom: "10px",
-                                                            }}
-                                                            key={`category-${part}`}
-                                                        >
-                                                            Category {part}
-                                                        </h3>
-                                                    );
-                                                } else {
-                                                    return (
-                                                        <h4
-                                                            style={{
-                                                                marginLeft: `${partIndex * 10}px`,
-                                                                marginTop: "10px",
-                                                                marginBottom: "10px",
-                                                            }}
-                                                            key={`category-${part}`}
-                                                        >
-                                                            .{part}
-                                                        </h4>
-                                                    );
-                                                }
-                                            }
-                                            return null;
-                                        })}
-                                        <SettingsOptionItem iD={option.iD} overlayId={overlay} />
-                                    </React.Fragment>
-                                );
-                            })}
+                            <SettingsScopeTabs
+                                optionIds={optionIds}
+                                overlayId={overlay}
+                                boxGeneration={boxGeneration}
+                            />
                         </Form>
                     </Formik>
                     <Divider>{t("settings.levelLabel")}</Divider>

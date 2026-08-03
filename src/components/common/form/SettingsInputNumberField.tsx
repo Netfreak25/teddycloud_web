@@ -1,7 +1,7 @@
 import { Checkbox, InputNumber, Space } from "antd";
 import FormItem from "antd/es/form/FormItem";
 import { useField } from "formik";
-import { useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import SettingsDataHandler from "../../../data/SettingsDataHandler";
 
@@ -11,27 +11,29 @@ type InputNumberFieldProps = {
     description?: string;
     overlayed?: boolean;
     overlayId?: string;
+    disabled?: boolean;
 };
 
 export const SettingsInputNumberField: React.FC<InputNumberFieldProps> = (props) => {
     const { t } = useTranslation();
-    const { name, label, description, overlayed: initialOverlayed } = props;
+    const { name, label, description, overlayed: initialOverlayed, disabled } = props;
     const [field, meta] = useField<number | undefined>(name!);
     const [overlayed, setOverlayed] = useState<boolean | undefined>(initialOverlayed); // State to track overlayed boolean
 
     const [fieldValue, setFieldValue] = useState(
         SettingsDataHandler.getInstance().getSetting(name)?.value,
     );
-    const idListener = () => {
-        setFieldValue(SettingsDataHandler.getInstance().getSetting(name)?.value);
-        setOverlayed(
-            overlayed !== undefined
-                ? SettingsDataHandler.getInstance().getSetting(name)?.overlayed
-                : undefined,
-        );
-    };
+    const idListener = useCallback(() => {
+        const setting = SettingsDataHandler.getInstance().getSetting(name);
+        setFieldValue(setting?.value);
+        setOverlayed(initialOverlayed !== undefined ? setting?.overlayed : undefined);
+    }, [initialOverlayed, name]);
 
-    SettingsDataHandler.getInstance().addIdListener(idListener, name);
+    useEffect(() => {
+        const handler = SettingsDataHandler.getInstance();
+        handler.addIdListener(idListener, name);
+        return () => handler.removeIdListener(idListener);
+    }, [idListener, name]);
 
     const hasFeedback = !!(meta.touched && meta.error);
     const help = meta.touched && meta.error && t(meta.error);
@@ -43,6 +45,7 @@ export const SettingsInputNumberField: React.FC<InputNumberFieldProps> = (props)
         overlayed === undefined ? null : (
             <Checkbox
                 checked={overlayed}
+                disabled={disabled}
                 onChange={(changeEventHandler) => {
                     SettingsDataHandler.getInstance().changeSettingOverlayed(
                         name,
@@ -77,7 +80,7 @@ export const SettingsInputNumberField: React.FC<InputNumberFieldProps> = (props)
                         );
                         setFieldValue(SettingsDataHandler.getInstance().getSetting(name)?.value);
                     }}
-                    disabled={!overlayed && overlayed !== undefined}
+                    disabled={disabled || (!overlayed && overlayed !== undefined)}
                 />
                 {overlayedCheckbox}
             </Space.Compact>

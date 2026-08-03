@@ -1,7 +1,7 @@
 import { Checkbox, Switch } from "antd";
 import FormItem from "antd/es/form/FormItem";
 import { useField } from "formik";
-import { useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import SettingsDataHandler from "../../../data/SettingsDataHandler";
 
@@ -27,16 +27,17 @@ export const SettingsSwitchField: React.FC<SwitchFieldProps> = (props) => {
     const hasFeedback = !!(meta.touched && meta.error);
     const help = meta.touched && meta.error && t(meta.error);
     const validateStatus = meta.touched && meta.error ? "error" : undefined;
-    const idListener = () => {
-        setFieldValue(SettingsDataHandler.getInstance().getSetting(name)?.value);
-        setOverlayed(
-            overlayed !== undefined
-                ? SettingsDataHandler.getInstance().getSetting(name)?.overlayed
-                : undefined,
-        );
-    };
+    const idListener = useCallback(() => {
+        const setting = SettingsDataHandler.getInstance().getSetting(name);
+        setFieldValue(setting?.value);
+        setOverlayed(initialOverlayed !== undefined ? setting?.overlayed : undefined);
+    }, [initialOverlayed, name]);
 
-    SettingsDataHandler.getInstance().addIdListener(idListener, name);
+    useEffect(() => {
+        const handler = SettingsDataHandler.getInstance();
+        handler.addIdListener(idListener, name);
+        return () => handler.removeIdListener(idListener);
+    }, [idListener, name]);
 
     let value = fieldValue as boolean;
 

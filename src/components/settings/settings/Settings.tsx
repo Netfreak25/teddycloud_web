@@ -7,9 +7,7 @@ import SettingsDataHandler from "../../../data/SettingsDataHandler";
 import { useTeddyCloud } from "../../../provider/TeddyCloudProvider";
 import LoadingSpinner from "../../common/elements/LoadingSpinner";
 import SettingsButton from "../../common/buttons/SettingsButtons";
-import { SettingsOptionItem } from "../../common/form/SettingsOptionItem";
-import { MqttForwardingFilters } from "../../common/form/MqttForwardingFilters";
-import { CloudSettingsGroups } from "../../common/form/CloudSettingsGroups";
+import { SettingsScopeTabs } from "../../common/form/SettingsScopeTabs";
 import { useSettingsData } from "./hooks/useSettingsData";
 import { useStickySavePanel } from "./hooks/useStickySavePanel";
 
@@ -30,12 +28,7 @@ export const Settings: React.FC = () => {
     const { footerHeight, showArrow } = useStickySavePanel();
 
     const settingsOptions: SettingsOption[] = (options?.options ?? []) as SettingsOption[];
-    const mqttForwardingOptionIds = settingsOptions
-        .map((option) => option.iD)
-        .filter((id) => id.startsWith("mqtt_client_upstream.forward."));
-    const cloudOptionIds = settingsOptions
-        .map((option) => option.iD)
-        .filter((id) => id.startsWith("cloud."));
+    const optionIds = settingsOptions.map((option) => option.iD);
 
     const savePanel = (
         <div
@@ -96,70 +89,7 @@ export const Settings: React.FC = () => {
                     }}
                 >
                     <Form labelCol={{ span: 8 }} wrapperCol={{ span: 14 }} layout="horizontal">
-                        {settingsOptions.map((option, index, array) => {
-                            const optionId = option.iD;
-
-                            if (optionId.includes("core.settings_level")) {
-                                return null;
-                            }
-                            if (optionId.startsWith("mqtt_client_upstream.forward.")) {
-                                return optionId === mqttForwardingOptionIds[0] ? (
-                                    <MqttForwardingFilters
-                                        key="mqtt-forwarding-filters"
-                                        optionIds={mqttForwardingOptionIds}
-                                    />
-                                ) : null;
-                            }
-                            if (optionId.startsWith("cloud.")) {
-                                return optionId === cloudOptionIds[0] ? (
-                                    <CloudSettingsGroups
-                                        key="cloud-settings-groups"
-                                        optionIds={cloudOptionIds}
-                                    />
-                                ) : null;
-                            }
-
-                            const parts = optionId.split(".");
-                            const previousOptionId = array[index - 1] ? array[index - 1].iD : "";
-                            const lastParts = previousOptionId ? previousOptionId.split(".") : [];
-
-                            return (
-                                <React.Fragment key={optionId}>
-                                    {parts.slice(0, -1).map((part, partIndex) => {
-                                        if (lastParts[partIndex] !== part) {
-                                            if (partIndex === 0) {
-                                                return (
-                                                    <h3
-                                                        style={{
-                                                            marginLeft: `${partIndex * 20}px`,
-                                                            marginBottom: "10px",
-                                                        }}
-                                                        key={`category-${optionId}-${partIndex}`}
-                                                    >
-                                                        Category {part}
-                                                    </h3>
-                                                );
-                                            } else {
-                                                return (
-                                                    <h4
-                                                        style={{
-                                                            marginLeft: `${partIndex * 10}px`,
-                                                            marginTop: "10px",
-                                                            marginBottom: "10px",
-                                                        }}
-                                                        key={`category-${optionId}-${partIndex}`}
-                                                    >
-                                                        .{part}
-                                                    </h4>
-                                                );
-                                            }
-                                        }
-                                        return null;
-                                    })}
-                                    <SettingsOptionItem noOverlay={true} iD={optionId} />
-                                </React.Fragment>
-                            );
-                        })}
+                        <SettingsScopeTabs optionIds={optionIds} />
                     </Form>
                 </Formik>
             )}

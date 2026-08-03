@@ -7,6 +7,7 @@ interface SettingsOptionItem {
     iD: string;
     noOverlay?: boolean;
     overlayId?: string;
+    disabled?: boolean;
 }
 
 export const SettingsOptionItem: React.FC<SettingsOptionItem> = (props) => {
@@ -17,6 +18,7 @@ export const SettingsOptionItem: React.FC<SettingsOptionItem> = (props) => {
 
     if (option !== undefined) {
         const { type, label, description, readOnly } = option;
+        const disabled = readOnly || props.disabled;
 
         return (
             <div key={iD}>
@@ -25,7 +27,7 @@ export const SettingsOptionItem: React.FC<SettingsOptionItem> = (props) => {
                         name={iD}
                         label={label}
                         description={description}
-                        disabled={readOnly}
+                        disabled={disabled}
                         overlayed={overlayedProp}
                         overlayId={props.overlayId}
                     />
@@ -37,6 +39,7 @@ export const SettingsOptionItem: React.FC<SettingsOptionItem> = (props) => {
                         description={description}
                         overlayed={overlayedProp}
                         overlayId={props.overlayId}
+                        disabled={disabled}
                     />
                 )}
                 {type === "uint" && (
@@ -46,6 +49,7 @@ export const SettingsOptionItem: React.FC<SettingsOptionItem> = (props) => {
                         description={description}
                         overlayed={overlayedProp}
                         overlayId={props.overlayId}
+                        disabled={disabled}
                     />
                 )}
                 {type === "string" && (
@@ -55,6 +59,7 @@ export const SettingsOptionItem: React.FC<SettingsOptionItem> = (props) => {
                         description={description}
                         overlayed={props.noOverlay ? undefined : option?.overlayed}
                         overlayId={props.overlayId}
+                        disabled={disabled}
                     />
                 )}
             </div>
