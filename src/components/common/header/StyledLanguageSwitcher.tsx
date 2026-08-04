@@ -12,8 +12,6 @@ export const StyledLanguageSwitcher = () => {
         { key: "fr", label: t("language.french") },
         { key: "es", label: t("language.spanish") },
         { key: "tlh", label: t("language.klingon") },
-        { key: "sjn", label: t("language.sindarin") },
-        { key: "qya", label: t("language.quenya") },
     ];
 
     const currentLanguage = i18n.resolvedLanguage ?? i18n.language;
