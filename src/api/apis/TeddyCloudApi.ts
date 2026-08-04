@@ -16,7 +16,12 @@ import {
     StatsListToJSON,
 } from "../models";
 
-import { TagTonieCard, TagTonieCardsList, TonieCardProps } from "../../types/tonieTypes";
+import {
+    ContentPlaylistUpdate,
+    TagTonieCard,
+    TagTonieCardsList,
+    TonieCardProps,
+} from "../../types/tonieTypes";
 import {
     TonieboxCardsList,
     TonieboxCardProps,
@@ -163,6 +168,26 @@ export class TeddyCloudApi extends runtime.BaseAPI {
         const tag = (await response.value()).tagInfo;
 
         return tag;
+    }
+
+    async apiSaveContentPlaylist(
+        ruid: string,
+        overlay: string,
+        playlist: ContentPlaylistUpdate,
+        initOverrides?: RequestInit | runtime.InitOverrideFunction,
+    ): Promise<TonieboxCommandResponse> {
+        const response = await this.apiPostTeddyCloudRaw(
+            `/api/content/playlist/${encodeURIComponent(ruid)}`,
+            JSON.stringify(playlist),
+            overlay,
+            initOverrides,
+            { "Content-Type": "application/json" },
+        );
+        const result = (await response.json()) as TonieboxCommandResponse;
+        if (!response.ok || !result.ok) {
+            throw new Error(result.error || `Saving content playlist failed (${response.status})`);
+        }
+        return result;
     }
 
     /**

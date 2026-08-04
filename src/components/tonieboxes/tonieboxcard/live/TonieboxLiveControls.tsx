@@ -31,6 +31,20 @@ const CONTROL_SIZE = 36;
 const resolvePlaybackTracks = (tonie?: TonieCardProps): string[] => {
     const sourceTracks = tonie?.sourceInfo?.tracks ?? [];
     const assignedTracks = tonie?.tonieInfo.tracks ?? [];
+
+    if (tonie?.playlist?.editable) {
+        return Array.from({ length: tonie.playlist.chapterCount }, (_, index) => {
+            return tonie.playlist?.tracks[index]?.trim() || "";
+        });
+    }
+
+    if (tonie?.source?.trim()) {
+        const trackCount = tonie.trackSeconds.length || sourceTracks.length;
+        return Array.from({ length: trackCount }, (_, index) => {
+            return sourceTracks[index]?.trim() || "";
+        });
+    }
+
     const trackCount = Math.max(
         sourceTracks.length,
         assignedTracks.length,
@@ -48,6 +62,7 @@ type TonieboxLiveControlsProps = {
     tonie?: TonieCardProps;
     readOnly: boolean;
     onRefresh?: () => Promise<void>;
+    onTonieRefresh?: () => Promise<void>;
 };
 
 export const TonieboxLiveControls = ({
@@ -56,6 +71,7 @@ export const TonieboxLiveControls = ({
     tonie,
     readOnly,
     onRefresh,
+    onTonieRefresh,
 }: TonieboxLiveControlsProps) => {
     const { t } = useTranslation();
     const { token } = theme.useToken();
@@ -165,9 +181,41 @@ export const TonieboxLiveControls = ({
         }
     };
 
+    const savePlaylist = async (title: string, playlistTracks: string[]) => {
+        if (!tonie?.ruid) return false;
+
+        try {
+            await api.apiSaveContentPlaylist(tonie.ruid, overlay, {
+                title,
+                tracks: playlistTracks,
+            });
+            if (onTonieRefresh) await onTonieRefresh();
+            addNotification(
+                NotificationTypeEnum.Success,
+                t("tonieboxes.live.playlistSaved"),
+                t("tonieboxes.live.playlistSavedDetails"),
+                t("tonieboxes.navigationTitle"),
+            );
+            return true;
+        } catch (error) {
+            addNotification(
+                NotificationTypeEnum.Error,
+                t("tonieboxes.live.playlistSaveFailed"),
+                `${t("tonieboxes.live.playlistSaveFailedDetails")}: ${String(error)}`,
+                t("tonieboxes.navigationTitle"),
+            );
+            return false;
+        }
+    };
+
     const controlButtonStyle = { width: CONTROL_SIZE, height: CONTROL_SIZE };
-    const series = tonie?.tonieInfo.series || t("tonieboxes.live.unknownTonie");
-    const episode = tonie?.tonieInfo.episode;
+    const customContent = Boolean(tonie?.source?.trim());
+    const series = customContent
+        ? tonie?.playlist?.title?.trim() ||
+          tonie?.sourceInfo?.series?.trim() ||
+          t("tonieboxes.live.customContent")
+        : tonie?.tonieInfo.series || t("tonieboxes.live.unknownTonie");
+    const episode = customContent ? undefined : tonie?.tonieInfo.episode;
     const chapterLabel =
         chapterNumber === undefined
             ? undefined
@@ -400,8 +448,10 @@ export const TonieboxLiveControls = ({
                         ? Number(commandInFlight.substring("chapter-".length))
                         : undefined
                 }
+                editable={!readOnly && Boolean(tonie?.playlist?.editable)}
                 onClose={() => setChapterDrawerOpen(false)}
                 onSelectChapter={(index) => void selectChapter(index)}
+                onSavePlaylist={savePlaylist}
             />
         </div>
     );

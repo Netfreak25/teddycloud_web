@@ -200,6 +200,21 @@
         "delete": "Qaw'",
         "editTonieboxSettingsModal": {
             "editTonieboxSettingsLabel": "DuHmey"
+        },
+        "live": {
+            "cancelPlaylistEdit": "qIl",
+            "chapter": "'ay' {{number}}",
+            "chapterStart": "tagh {{time}}",
+            "chapterTitle": "'ay' {{number}} pong",
+            "chapters": "'ay'mey",
+            "customContent": "De' le'",
+            "editPlaylist": "choH",
+            "playlistSaveFailed": "QoQ tetlh polbe'lu'",
+            "playlistSaveFailedDetails": "pongmey polmeH Qagh tu'lu'",
+            "playlistSaved": "QoQ tetlh pollu'",
+            "playlistSavedDetails": "De' pong 'ay'mey pong je polta'",
+            "playlistTitle": "De' pong",
+            "savePlaylist": "Hoch pol"
         }
     },
     "tonies": {

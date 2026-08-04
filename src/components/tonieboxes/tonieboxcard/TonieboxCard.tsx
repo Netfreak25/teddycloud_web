@@ -257,6 +257,14 @@ export const TonieboxCard: React.FC<{
     const setLastPlayedTonie = (tonie: TonieCardProps[], time?: string) => {
         if (!tonie || tonie.length === 0) return;
 
+        const customContent = Boolean(tonie[0].source?.trim());
+        const displayTitle = customContent
+            ? tonie[0].playlist?.title?.trim() ||
+              tonie[0].sourceInfo?.series?.trim() ||
+              tonie[0].tonieInfo.series
+            : tonie[0].tonieInfo.series;
+        const displayEpisode = customContent ? undefined : tonie[0].tonieInfo.episode;
+
         setLastPlayedTonieName(
             <Link to={`/tonies?tonieRUID=${tonie[0].ruid}&overlay=${tonieboxCard.ID}`}>
                 <Tooltip
@@ -264,8 +272,8 @@ export const TonieboxCard: React.FC<{
                     zIndex={2}
                     title={
                         t("tonieboxes.lastPlayedTonie") +
-                        tonie[0].tonieInfo.series +
-                        (tonie[0].tonieInfo.episode ? " - " + tonie[0].tonieInfo.episode : "") +
+                        displayTitle +
+                        (displayEpisode ? " - " + displayEpisode : "") +
                         (time ? " (" + time + ")" : "")
                     }
                 >
@@ -285,6 +293,17 @@ export const TonieboxCard: React.FC<{
                 </Tooltip>
             </Link>,
         );
+    };
+
+    const refreshNowPlayingTonie = async () => {
+        if (!currentRuid || !/^[0-9a-f]{16}$/i.test(currentRuid)) return;
+
+        const tonie = await api.apiGetTagInfo(currentRuid, tonieboxCard.ID);
+        setNowPlayingTonie(tonie);
+        const playedAt = runtime?.playback.updatedAt
+            ? new Date(runtime.playback.updatedAt * 1000).toLocaleString()
+            : undefined;
+        setLastPlayedTonie([tonie], playedAt);
     };
 
     // certificates
@@ -709,6 +728,7 @@ export const TonieboxCard: React.FC<{
                         tonie={nowPlayingTonie}
                         readOnly={readOnly}
                         onRefresh={onRefresh}
+                        onTonieRefresh={refreshNowPlayingTonie}
                     />
                 )}
                 <Meta

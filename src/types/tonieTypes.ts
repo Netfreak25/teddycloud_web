@@ -7,6 +7,15 @@ export type TonieInfo = {
     tracks: string[];
 };
 
+export type ContentPlaylist = {
+    editable: boolean;
+    chapterCount: number;
+    title: string;
+    tracks: string[];
+};
+
+export type ContentPlaylistUpdate = Pick<ContentPlaylist, "title" | "tracks">;
+
 export type TonieCardProps = {
     uid: string;
     ruid: string;
@@ -23,6 +32,7 @@ export type TonieCardProps = {
     downloadTriggerUrl: string;
     tonieInfo: TonieInfo;
     sourceInfo: TonieInfo;
+    playlist?: ContentPlaylist;
     trackSeconds: number[];
     marked?: boolean;
     onToggleMark?: (ruid: string) => void;
