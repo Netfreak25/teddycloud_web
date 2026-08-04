@@ -2725,7 +2725,7 @@
             "bedtimeUntil": "until {{time}}",
             "cancelPlaylistEdit": "Cancel",
             "chapter": "Chapter {{number}}",
-            "chapterStart": "Start {{time}}",
+            "chapterDuration": "Duration {{time}}",
             "chapterTitle": "Title for chapter {{number}}",
             "chapters": "Chapters",
             "commandFailed": "Toniebox command failed",

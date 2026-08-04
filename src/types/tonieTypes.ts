@@ -12,6 +12,7 @@ export type ContentPlaylist = {
     chapterCount: number;
     title: string;
     tracks: string[];
+    durations: number[];
 };
 
 export type ContentPlaylistUpdate = Pick<ContentPlaylist, "title" | "tracks">;

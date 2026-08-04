@@ -204,7 +204,7 @@
         "live": {
             "cancelPlaylistEdit": "qIl",
             "chapter": "'ay' {{number}}",
-            "chapterStart": "tagh {{time}}",
+            "chapterDuration": "poH {{time}}",
             "chapterTitle": "'ay' {{number}} pong",
             "chapters": "'ay'mey",
             "customContent": "De' le'",

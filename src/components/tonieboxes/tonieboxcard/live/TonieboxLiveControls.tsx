@@ -211,9 +211,7 @@ export const TonieboxLiveControls = ({
     const controlButtonStyle = { width: CONTROL_SIZE, height: CONTROL_SIZE };
     const customContent = Boolean(tonie?.source?.trim());
     const series = customContent
-        ? tonie?.playlist?.title?.trim() ||
-          tonie?.sourceInfo?.series?.trim() ||
-          t("tonieboxes.live.customContent")
+        ? tonie?.playlist?.title?.trim() || t("tonieboxes.live.customContent")
         : tonie?.tonieInfo.series || t("tonieboxes.live.unknownTonie");
     const episode = customContent ? undefined : tonie?.tonieInfo.episode;
     const chapterLabel =
@@ -438,9 +436,10 @@ export const TonieboxLiveControls = ({
 
             <ChapterDrawer
                 open={chapterDrawerOpen}
-                title={tonie?.tonieInfo.series}
+                title={series}
+                editableTitle={customContent ? tonie?.playlist?.title : undefined}
                 tracks={tracks}
-                trackSeconds={tonie?.trackSeconds}
+                trackDurations={tonie?.playlist?.durations}
                 currentChapter={chapterIndex}
                 playbackEnabled={playbackEnabled && !commandPending}
                 loadingChapter={

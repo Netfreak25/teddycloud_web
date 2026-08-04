@@ -8,8 +8,9 @@ import { formatPlaybackTime } from "./formatTime";
 type ChapterDrawerProps = {
     open: boolean;
     title?: string;
+    editableTitle?: string;
     tracks: string[];
-    trackSeconds?: number[];
+    trackDurations?: number[];
     currentChapter: number | null;
     playbackEnabled: boolean;
     loadingChapter?: number;
@@ -24,8 +25,9 @@ const PLAYLIST_TEXT_MAX_LENGTH = 200;
 export const ChapterDrawer = ({
     open,
     title,
+    editableTitle,
     tracks,
-    trackSeconds,
+    trackDurations,
     currentChapter,
     playbackEnabled,
     loadingChapter,
@@ -38,25 +40,25 @@ export const ChapterDrawer = ({
     const { token } = theme.useToken();
     const [editing, setEditing] = useState(false);
     const [saving, setSaving] = useState(false);
-    const [draftTitle, setDraftTitle] = useState(title ?? "");
+    const [draftTitle, setDraftTitle] = useState(editableTitle ?? title ?? "");
     const [draftTracks, setDraftTracks] = useState(tracks);
 
     useEffect(() => {
         if (!editing) {
-            setDraftTitle(title ?? "");
+            setDraftTitle(editableTitle ?? title ?? "");
             setDraftTracks(tracks);
         }
-    }, [editing, title, tracks]);
+    }, [editableTitle, editing, title, tracks]);
 
     const startEditing = () => {
-        setDraftTitle(title ?? "");
+        setDraftTitle(editableTitle ?? title ?? "");
         setDraftTracks(tracks);
         setEditing(true);
     };
 
     const cancelEditing = () => {
         setEditing(false);
-        setDraftTitle(title ?? "");
+        setDraftTitle(editableTitle ?? title ?? "");
         setDraftTracks(tracks);
     };
 
@@ -178,9 +180,9 @@ export const ChapterDrawer = ({
                                 )
                             }
                             description={
-                                trackSeconds?.[index] !== undefined
-                                    ? t("tonieboxes.live.chapterStart", {
-                                          time: formatPlaybackTime(trackSeconds[index]),
+                                trackDurations?.[index] !== undefined
+                                    ? t("tonieboxes.live.chapterDuration", {
+                                          time: formatPlaybackTime(trackDurations[index]),
                                       })
                                     : undefined
                             }
