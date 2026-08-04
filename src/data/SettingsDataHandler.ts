@@ -134,6 +134,12 @@ export default class SettingsDataHandler {
             if (upstreamEnable) {
                 await this.saveSingleSetting(upstreamEnable);
             }
+            const localControlChange = changedSettings.find(
+                (setting) => setting.iD === "mqtt_client_upstream.local_control_enabled",
+            );
+            if (localControlChange?.value === true) {
+                await this.saveSingleSetting(localControlChange);
+            }
             const tb2HttpsModeEnable = changedSettings.find(
                 (setting) => TB2_HTTPS_MODE_SETTINGS.includes(setting.iD) && setting.value === true,
             );
@@ -143,10 +149,16 @@ export default class SettingsDataHandler {
             await Promise.all(
                 changedSettings
                     .filter(
-                        (setting) => setting !== upstreamEnable && setting !== tb2HttpsModeEnable,
+                        (setting) =>
+                            setting !== upstreamEnable &&
+                            setting !== tb2HttpsModeEnable &&
+                            setting !== localControlChange,
                     )
                     .map((setting) => this.saveSingleSetting(setting)),
             );
+            if (localControlChange?.value === false) {
+                await this.saveSingleSetting(localControlChange);
+            }
             await triggerWriteConfig();
             this.settings.forEach((setting) => {
                 setting.initialValue = setting.value;
@@ -205,6 +217,7 @@ export default class SettingsDataHandler {
                         "cloud.remote_port_tb2",
                         "mqtt_client_upstream.enabled",
                         "mqtt_client_upstream.passthrough_enabled",
+                        "mqtt_client_upstream.local_control_enabled",
                         "mqtt_client_upstream.hostname",
                         "mqtt_client_upstream.port",
                     ];

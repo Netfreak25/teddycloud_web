@@ -15,7 +15,11 @@ export type SettingsLayoutSection = {
 type SettingDependency = {
     master: string;
     labelKey: string;
-    dependents: string[];
+    dependents?: string[];
+    dependentPrefixes?: string[];
+    enabledWhen?: boolean;
+    showHeading?: boolean;
+    appliesWhen?: Array<{ setting: string; value: boolean }>;
 };
 
 type SettingsLayoutDefinition = {
@@ -59,7 +63,11 @@ export const isSettingOverlayEligible = (optionId: string): boolean =>
     settingsLayout.overlay.prefixes.some((prefix) => optionId.startsWith(prefix));
 
 export const getSettingDependency = (optionId: string): SettingDependency | undefined =>
-    settingsLayout.dependencies.find((dependency) => dependency.dependents.includes(optionId));
+    settingsLayout.dependencies.find(
+        (dependency) =>
+            (dependency.dependents?.includes(optionId) ?? false) ||
+            (dependency.dependentPrefixes?.some((prefix) => optionId.startsWith(prefix)) ?? false),
+    );
 
 export const normalizeBoxGeneration = (
     value: boolean | string | number | undefined,

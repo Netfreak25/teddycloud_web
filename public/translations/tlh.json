@@ -104,6 +104,8 @@
             "encoding": "Encoding",
             "webui": "WebUI",
             "cloudContent": "Cloud De'",
+            "bothGenerations": "Toniebox Segh Hoch",
+            "localIciControl": "ICI labtaHvIS naDev SeH",
             "mqtt": "MQTT / Home Assistant",
             "diagnostics": "Qagh nej",
             "tonieJson": "Tonie De'",
@@ -174,6 +176,10 @@
             },
             "mqtt_client_upstream__passthrough_enabled": {
                 "label": "ICI proxy QotlhHa'"
+            },
+            "mqtt_client_upstream__local_control_enabled": {
+                "label": "ICI labtaHvIS TeddyCloud SeH chaw'",
+                "description": "ICI proxy QaptaHvIS TB2 DuHmey app SeH je ngeH TeddyCloud"
             },
             "mqtt_server__enabled": {
                 "label": "MQTT De'wI' QotlhHa'"

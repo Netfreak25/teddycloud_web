@@ -61,8 +61,15 @@ export const SettingsScopeTabs: React.FC<Props> = ({ optionIds, overlayId, boxGe
 
     const renderSetting = (optionId: string) => {
         const dependency = getSettingDependency(optionId);
+        const dependencyApplies =
+            dependency?.appliesWhen?.every(
+                (condition) => handler.getSetting(condition.setting)?.value === condition.value,
+            ) ?? true;
+        const enabledWhen = dependency?.enabledWhen ?? true;
         const disabled =
-            dependency !== undefined && handler.getSetting(dependency.master)?.value !== true;
+            dependency !== undefined &&
+            dependencyApplies &&
+            handler.getSetting(dependency.master)?.value !== enabledWhen;
 
         return (
             <SettingsOptionItem
@@ -98,7 +105,9 @@ export const SettingsScopeTabs: React.FC<Props> = ({ optionIds, overlayId, boxGe
                 {standardIds.map((optionId) => {
                     const dependency = getSettingDependency(optionId);
                     const showDependencyHeading =
-                        dependency !== undefined && !renderedDependencies.has(dependency.master);
+                        dependency !== undefined &&
+                        dependency.showHeading !== false &&
+                        !renderedDependencies.has(dependency.master);
                     if (dependency !== undefined) renderedDependencies.add(dependency.master);
 
                     return (

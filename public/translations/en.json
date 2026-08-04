@@ -1063,6 +1063,8 @@
             "encoding": "Encoding",
             "webui": "WebUI",
             "cloudContent": "Cross-generation cloud and content options",
+            "bothGenerations": "Both generations",
+            "localIciControl": "Local control during ICI upstream",
             "mqtt": "MQTT and Home Assistant",
             "diagnostics": "Diagnostics",
             "tonieJson": "Tonie data",
@@ -1719,6 +1721,10 @@
             "mqtt_client_upstream__passthrough_enabled": {
                 "label": "Enable transparent capture forwarder",
                 "description": "Forward MQTT traffic unchanged while recording a full local capture"
+            },
+            "mqtt_client_upstream__local_control_enabled": {
+                "label": "Allow TeddyCloud control during ICI upstream",
+                "description": "Allow TeddyCloud to send local TB2 settings and app controls while the ICI proxy is active"
             },
             "mqtt_client_upstream__port": {
                 "label": "MQTT Server port",

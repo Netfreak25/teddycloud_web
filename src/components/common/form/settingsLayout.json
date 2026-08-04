@@ -77,16 +77,12 @@
         {
             "id": "global.cloud",
             "scope": "global",
-            "labelKey": "settings.scopeSections.cloudContent",
+            "labelKey": "settings.scopeSections.bothGenerations",
             "ids": [
                 "cloud.cacheOta",
                 "cloud.localOta",
-                "cloud.cacheContent",
-                "cloud.cacheToLibrary",
                 "cloud.markCustomTagByPass",
                 "cloud.markCustomTagByUid",
-                "cloud.prioCustomContent",
-                "cloud.updateOnLowerAudioId",
                 "cloud.dumpRuidAuthContentJson"
             ]
         },
@@ -114,6 +110,17 @@
             "scope": "global",
             "labelKey": "settings.scopeSections.boxGeneral",
             "ids": ["toniebox.api_access", "toniebox.boxGeneration"]
+        },
+        {
+            "id": "tb1.content",
+            "scope": "tb1",
+            "labelKey": "settings.scopeSections.content",
+            "ids": [
+                "cloud.cacheContent",
+                "cloud.cacheToLibrary",
+                "cloud.prioCustomContent",
+                "cloud.updateOnLowerAudioId"
+            ]
         },
         {
             "id": "tb1.certificates",
@@ -232,6 +239,7 @@
             "core.contentdir",
             "core.flex_enabled",
             "core.flex_uid",
+            "mqtt_client_upstream.local_control_enabled",
             "toniebox.api_access",
             "toniebox.boxGeneration"
         ],
@@ -254,6 +262,29 @@
                 "cloud.enableV3SetupStatus",
                 "cloud.enableV3ContentMeta",
                 "cloud.enableV3Chapter"
+            ]
+        },
+        {
+            "master": "cloud.cacheContent",
+            "labelKey": "settings.scopeSections.content",
+            "showHeading": false,
+            "dependents": ["cloud.cacheToLibrary"]
+        },
+        {
+            "master": "cloud.updateOnLowerAudioId",
+            "enabledWhen": false,
+            "labelKey": "settings.scopeSections.content",
+            "showHeading": false,
+            "dependents": ["cloud.prioCustomContent"]
+        },
+        {
+            "master": "mqtt_client_upstream.local_control_enabled",
+            "labelKey": "settings.scopeSections.localIciControl",
+            "showHeading": false,
+            "dependentPrefixes": ["toniebox2."],
+            "appliesWhen": [
+                { "setting": "mqtt_client_upstream.enabled", "value": true },
+                { "setting": "mqtt_client_upstream.passthrough_enabled", "value": true }
             ]
         }
     ]
