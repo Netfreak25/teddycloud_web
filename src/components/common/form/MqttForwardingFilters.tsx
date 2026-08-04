@@ -7,7 +7,7 @@ const FILTER_PREFIX = "mqtt_client_upstream.forward.";
 
 type FilterGroup = {
     key: string;
-    label: string;
+    labelKey: string;
     matches: (id: string) => boolean;
     searchable?: boolean;
 };
@@ -15,33 +15,33 @@ type FilterGroup = {
 const groups: FilterGroup[] = [
     {
         key: "logs",
-        label: "Logs",
+        labelKey: "settings.mqttForwarding.groups.logs",
         matches: (id) => id.startsWith(`${FILTER_PREFIX}logs.`),
         searchable: true,
     },
     {
         key: "metrics",
-        label: "Metrics",
+        labelKey: "settings.mqttForwarding.groups.metrics",
         matches: (id) => id.startsWith(`${FILTER_PREFIX}metrics.`),
     },
     {
         key: "app-reply",
-        label: "App Reply",
+        labelKey: "settings.mqttForwarding.groups.appReply",
         matches: (id) => id.startsWith(`${FILTER_PREFIX}app_reply.`),
     },
     {
         key: "settings",
-        label: "Settings",
+        labelKey: "settings.mqttForwarding.groups.settings",
         matches: (id) => id.startsWith(`${FILTER_PREFIX}settings.`),
     },
     {
         key: "playback",
-        label: "Playback",
+        labelKey: "settings.mqttForwarding.groups.playback",
         matches: (id) => id.startsWith(`${FILTER_PREFIX}playback.`),
     },
     {
         key: "app-control",
-        label: "App Control",
+        labelKey: "settings.mqttForwarding.groups.appControl",
         matches: (id) => id.startsWith(`${FILTER_PREFIX}app_control.`),
     },
 ];
@@ -100,7 +100,20 @@ export const MqttForwardingFilters: React.FC<Props> = ({ optionIds, overlayId })
         setRevision((revision) => revision + 1);
     };
 
+    const getSettingText = (setting: Setting) => {
+        const translationId = setting.iD.replaceAll(".", "__");
+        return {
+            label: t(`settings.optionText.${translationId}.label`, {
+                defaultValue: setting.label,
+            }),
+            description: t(`settings.optionText.${translationId}.description`, {
+                defaultValue: setting.description,
+            }),
+        };
+    };
+
     const renderSetting = (setting: Setting) => {
+        const settingText = getSettingText(setting);
         const control =
             overlayId === undefined ? (
                 <Switch
@@ -138,9 +151,9 @@ export const MqttForwardingFilters: React.FC<Props> = ({ optionIds, overlayId })
                 }}
             >
                 {compactDesktopLayout && control}
-                <Tooltip title={setting.description}>
+                <Tooltip title={settingText.description}>
                     <Typography.Text style={{ overflowWrap: "anywhere" }}>
-                        {setting.label}
+                        {settingText.label}
                     </Typography.Text>
                 </Tooltip>
                 {!compactDesktopLayout && control}
@@ -153,7 +166,7 @@ export const MqttForwardingFilters: React.FC<Props> = ({ optionIds, overlayId })
         if (group.searchable && logSearch.trim() !== "") {
             const search = logSearch.trim().toLocaleLowerCase();
             groupSettings = groupSettings.filter((setting) =>
-                setting.label.toLocaleLowerCase().includes(search),
+                getSettingText(setting).label.toLocaleLowerCase().includes(search),
             );
         }
         const groupSuppressed = settings.filter(
@@ -163,7 +176,7 @@ export const MqttForwardingFilters: React.FC<Props> = ({ optionIds, overlayId })
             key: group.key,
             label: (
                 <Space>
-                    <span>{group.label}</span>
+                    <span>{t(group.labelKey)}</span>
                     {groupSuppressed > 0 && <Badge count={groupSuppressed} />}
                 </Space>
             ),

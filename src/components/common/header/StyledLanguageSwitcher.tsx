@@ -11,11 +11,17 @@ export const StyledLanguageSwitcher = () => {
         { key: "de", label: t("language.german") },
         { key: "fr", label: t("language.french") },
         { key: "es", label: t("language.spanish") },
+        { key: "tlh", label: t("language.klingon") },
+        { key: "sjn", label: t("language.sindarin") },
+        { key: "qya", label: t("language.quenya") },
     ];
 
-    const currentLanguage = i18n.language;
+    const currentLanguage = i18n.resolvedLanguage ?? i18n.language;
     const currentLabel =
-        LANGS.find((l) => l.key === currentLanguage.substring(0, 2))?.label ?? currentLanguage;
+        LANGS.find(
+            (language) =>
+                language.key === currentLanguage || currentLanguage.startsWith(`${language.key}-`),
+        )?.label ?? currentLanguage;
 
     return (
         <div style={{ marginRight: 8 }}>
