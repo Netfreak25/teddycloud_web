@@ -57,6 +57,8 @@ const { Paragraph } = Typography;
 
 const { useToken } = theme;
 
+const NATIVE_COLLECTION_ROOT_PATH = "by/contentHash";
+
 export const FileBrowser: React.FC<{
     special: string;
     filetypeFilter?: string[];
@@ -168,6 +170,14 @@ export const FileBrowser: React.FC<{
         .join("/");
     const isNativeCollectionDetail =
         special === "library" && /^by\/contentHash\/[0-9a-f]{64}(?:\/|$)/.test(decodedPath);
+
+    const closeNativeCollectionDetail = () => {
+        if (trackUrl) {
+            navigate(`?path=${NATIVE_COLLECTION_ROOT_PATH}`);
+        }
+        setSelectedRowKeys([]);
+        setPath(NATIVE_COLLECTION_ROOT_PATH);
+    };
 
     const {
         open: isCreateDirectoryModalOpen,
@@ -650,6 +660,15 @@ export const FileBrowser: React.FC<{
                             <div
                                 style={{ display: "flex", flexWrap: "wrap", gap: 8, minHeight: 32 }}
                             >
+                                {isNativeCollectionDetail && (
+                                    <Button
+                                        size="small"
+                                        icon={<CloseOutlined />}
+                                        onClick={closeNativeCollectionDetail}
+                                    >
+                                        {t("settings.close")}
+                                    </Button>
+                                )}
                                 {selectedRowKeys.length > 0 ? (
                                     <>
                                         {files.filter(
