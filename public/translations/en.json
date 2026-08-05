@@ -3293,6 +3293,12 @@
             "addFile": "Add file",
             "audioId": "Audio ID",
             "audioIdTooltip": "Sets the audio id if the file is cached. Set it to 0 to force recreating the cached file",
+            "shuffle": "Playback order",
+            "shuffleModes": {
+                "ordered": "In order",
+                "all": "Shuffle all",
+                "one": "Random selection"
+            },
             "cancel": "Cancel",
             "create": "Create",
             "fileNameContentFile": "Description",

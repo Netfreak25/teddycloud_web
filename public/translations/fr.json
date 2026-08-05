@@ -3293,6 +3293,12 @@
             "addFile": "Ajouter un fichier",
             "audioId": "ID audio",
             "audioIdTooltip": "Définit l'ID audio si le fichier est mis en cache. Définissez-le à 0 pour forcer la recréation du fichier mis en cache",
+            "shuffle": "Ordre de lecture",
+            "shuffleModes": {
+                "ordered": "Dans l'ordre",
+                "all": "Tout mélanger",
+                "one": "Sélection aléatoire"
+            },
             "cancel": "Annuler",
             "create": "Créer",
             "fileNameContentFile": "Description",

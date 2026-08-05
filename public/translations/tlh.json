@@ -243,7 +243,13 @@
         },
         "tapEditor": {
             "cancel": "qIl",
-            "save": "pol"
+            "save": "pol",
+            "shuffle": "chu'ghach tlhegh",
+            "shuffleModes": {
+                "ordered": "tlhegh",
+                "all": "Hoch Hoch DuD",
+                "one": "wa' wIv lo' SuD"
+            }
         },
         "teddystudio": {
             "cancel": "qIl",

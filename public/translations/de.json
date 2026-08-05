@@ -3293,6 +3293,12 @@
             "addFile": "Datei hinzufügen",
             "audioId": "Audio-ID",
             "audioIdTooltip": "Legt die Audio-ID fest, wenn die Datei zwischengespeichert ist. Setze sie auf 0, um die zwischengespeicherte Datei neu zu erstellen",
+            "shuffle": "Wiedergabereihenfolge",
+            "shuffleModes": {
+                "ordered": "Reihenfolge",
+                "all": "Alle mischen",
+                "one": "Zufallsauswahl"
+            },
             "cancel": "Abbrechen",
             "create": "Anlegen",
             "fileNameContentFile": "Beschreibung",
