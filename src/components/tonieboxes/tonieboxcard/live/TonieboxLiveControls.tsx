@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { Button, Flex, Slider, Space, theme, Tooltip, Typography } from "antd";
+import { Button, Flex, Slider, Space, Tag, theme, Tooltip, Typography } from "antd";
+import { useNavigate } from "react-router-dom";
 import {
     CaretRightOutlined,
     CustomerServiceOutlined,
@@ -28,11 +29,33 @@ const VOLUME_MIN = 0;
 const VOLUME_MAX = 10;
 const CONTROL_SIZE = 36;
 
+const resolveTapEditRoute = (editTarget?: string): string | undefined => {
+    const target = editTarget?.trim();
+    if (!target || !target.toLowerCase().startsWith("lib://")) return undefined;
+
+    const relativeTarget = target.slice("lib://".length).replace(/^\/+/, "");
+    const separator = relativeTarget.lastIndexOf("/");
+    const directory = separator >= 0 ? relativeTarget.slice(0, separator) : "";
+    const filename = separator >= 0 ? relativeTarget.slice(separator + 1) : relativeTarget;
+    if (!filename.toLowerCase().endsWith(".tap")) return undefined;
+
+    const params = new URLSearchParams();
+    if (directory) params.set("path", directory);
+    params.set("editTap", filename);
+    return `/tonies/library?${params.toString()}`;
+};
+
 const resolvePlaybackTracks = (tonie?: TonieCardProps): string[] => {
     const sourceTracks = tonie?.sourceInfo?.tracks ?? [];
     const assignedTracks = tonie?.tonieInfo.tracks ?? [];
 
-    if (tonie?.playlist?.editable) {
+    if (tonie?.playlist?.kind === "tap") {
+        return Array.from({ length: tonie.playlist.chapterCount }, (_, index) => {
+            return tonie.playlist?.tracks[index]?.trim() || "";
+        });
+    }
+
+    if (tonie?.playlist?.kind === "direct_taf" || tonie?.playlist?.editable) {
         return Array.from({ length: tonie.playlist.chapterCount }, (_, index) => {
             return tonie.playlist?.tracks[index]?.trim() || "";
         });
@@ -74,6 +97,7 @@ export const TonieboxLiveControls = ({
     onTonieRefresh,
 }: TonieboxLiveControlsProps) => {
     const { t } = useTranslation();
+    const navigate = useNavigate();
     const { token } = theme.useToken();
     const { addNotification } = useTeddyCloud();
     const [chapterDrawerOpen, setChapterDrawerOpen] = useState(false);
@@ -208,6 +232,14 @@ export const TonieboxLiveControls = ({
         }
     };
 
+    const tapPlaylist = tonie?.playlist?.kind === "tap" ? tonie.playlist : undefined;
+    const tapEditRoute = resolveTapEditRoute(tapPlaylist?.editTarget);
+    const editTap = () => {
+        if (!tapEditRoute) return;
+        setChapterDrawerOpen(false);
+        navigate(tapEditRoute);
+    };
+
     const controlButtonStyle = { width: CONTROL_SIZE, height: CONTROL_SIZE };
     const customContent = Boolean(tonie?.source?.trim());
     const series = customContent
@@ -322,6 +354,15 @@ export const TonieboxLiveControls = ({
                             <Typography.Text type="secondary" ellipsis style={{ display: "block" }}>
                                 {series}
                             </Typography.Text>
+                            {tapPlaylist?.shuffleMode !== undefined && (
+                                <Tag bordered={false} style={{ marginInlineEnd: 0, marginTop: 2 }}>
+                                    {t(
+                                        `tonieboxes.live.shuffleModes.${
+                                            ["ordered", "all", "one"][tapPlaylist.shuffleMode]
+                                        }`,
+                                    )}
+                                </Tag>
+                            )}
                             {episode && (
                                 <Typography.Text strong ellipsis style={{ display: "block" }}>
                                     {episode}
@@ -447,7 +488,10 @@ export const TonieboxLiveControls = ({
                         ? Number(commandInFlight.substring("chapter-".length))
                         : undefined
                 }
-                editable={!readOnly && Boolean(tonie?.playlist?.editable)}
+                editable={
+                    !readOnly && (Boolean(tonie?.playlist?.editable) || Boolean(tapEditRoute))
+                }
+                onEditExternal={tapEditRoute ? editTap : undefined}
                 onClose={() => setChapterDrawerOpen(false)}
                 onSelectChapter={(index) => void selectChapter(index)}
                 onSavePlaylist={savePlaylist}

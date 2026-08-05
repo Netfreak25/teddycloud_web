@@ -209,6 +209,15 @@
             "chapters": "'ay'mey",
             "customContent": "De' le'",
             "editPlaylist": "choH",
+            "playlistTypes": {
+                "directTaf": "nIqHom le'",
+                "tap": "TeddyAudio QonoS"
+            },
+            "shuffleModes": {
+                "ordered": "tlheghDaq",
+                "all": "Hoch DuD",
+                "one": "pagh nabbe' wIv"
+            },
             "playlistSaveFailed": "QoQ tetlh polbe'lu'",
             "playlistSaveFailedDetails": "pongmey polmeH Qagh tu'lu'",
             "playlistSaved": "QoQ tetlh pollu'",

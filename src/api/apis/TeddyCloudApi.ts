@@ -146,10 +146,15 @@ export class TeddyCloudApi extends runtime.BaseAPI {
     async apiGetTagInfoRaw(
         ruid: string,
         overlay?: string,
+        contentVersion?: number | null,
         initOverrides?: RequestInit | runtime.InitOverrideFunction,
     ): Promise<runtime.ApiResponse<TagTonieCard>> {
+        const versionQuery =
+            contentVersion === null || contentVersion === undefined
+                ? ""
+                : `&contentVersion=${encodeURIComponent(contentVersion)}`;
         const response = await this.apiGetTeddyCloudApiRaw(
-            `/api/getTagInfo?ruid=${ruid}`,
+            `/api/getTagInfo?ruid=${encodeURIComponent(ruid)}${versionQuery}`,
             overlay,
             initOverrides,
         );
@@ -162,9 +167,10 @@ export class TeddyCloudApi extends runtime.BaseAPI {
     async apiGetTagInfo(
         ruid: string,
         overlay?: string,
+        contentVersion?: number | null,
         initOverrides?: RequestInit | runtime.InitOverrideFunction,
     ): Promise<TonieCardProps> {
-        const response = await this.apiGetTagInfoRaw(ruid, overlay, initOverrides);
+        const response = await this.apiGetTagInfoRaw(ruid, overlay, contentVersion, initOverrides);
         const tag = (await response.value()).tagInfo;
 
         return tag;
@@ -628,10 +634,13 @@ export class TeddyCloudApi extends runtime.BaseAPI {
     ): Promise<Response> {
         const queryParameters: any = {};
         const headerParameters: runtime.HTTPHeaders = {};
+        const overlayQuery = overlay
+            ? `${apiPath.includes("?") ? "&" : "?"}overlay=${encodeURIComponent(String(overlay))}`
+            : "";
 
         const response = await this.request(
             {
-                path: `${apiPath}${overlay ? "?overlay=" + overlay : ""}`,
+                path: `${apiPath}${overlayQuery}`,
                 method: "GET",
                 headers: headerParameters,
                 query: queryParameters,

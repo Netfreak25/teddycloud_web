@@ -2784,6 +2784,15 @@
             "commandFailedDetails": "No se pudo enviar el comando",
             "customContent": "Contenido personalizado",
             "editPlaylist": "Editar",
+            "playlistTypes": {
+                "directTaf": "Contenido personalizado",
+                "tap": "Lista TeddyAudio"
+            },
+            "shuffleModes": {
+                "ordered": "En orden",
+                "all": "Mezclado",
+                "one": "Selección aleatoria"
+            },
             "headphonesConnected": "Auriculares conectados: {{count}}",
             "next": "Siguiente",
             "pause": "Pausa",
