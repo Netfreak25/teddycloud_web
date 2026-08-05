@@ -642,6 +642,58 @@
                         "01pluginFeature": "extend TeddyCloud functionality by custom plugins"
                     },
                     "title": "TeddyCloud Plugins"
+                },
+                "15tb2Management": {
+                    "items": {
+                        "01registration": "automatically recognize Toniebox 2 devices and manage them with individual box overlays",
+                        "02liveState": "show playback, volume, battery, headphones, and additional live state",
+                        "03liveControls": "control playback, volume, ping, bedtime, and additional box functions directly",
+                        "04generationSettings": "clearly separate settings and certificates into Global, TB1, and TB2"
+                    },
+                    "title": "Manage Toniebox 2 devices"
+                },
+                "16tb2Content": {
+                    "items": {
+                        "01v3Routing": "content-aware V3 cloud path with local source-of-truth and NoCloud control",
+                        "02nativeCache": "cache original TONIES manifests and Ogg/Opus chapters with atomic version activation",
+                        "03customContent": "deliver private TAF content to TB2 as independent, cache-safe Ogg/Opus chapters",
+                        "04freshness": "update changed content through HTTPS freshness and reliable MQTT QoS 1 notifications",
+                        "05download": "download original content through V1/V2 or V3 according to the box generation",
+                        "06library": "import complete TB2 original content natively into the library with content-based deduplication"
+                    },
+                    "title": "Native TB2 content delivery"
+                },
+                "17iciMqtt": {
+                    "items": {
+                        "01serverAndUpstream": "integrated TLS MQTT server with optional transparent ICI forwarding",
+                        "02observer": "locally observe claims, playback, volume, settings, metrics, and box status",
+                        "03localControl": "safely use TeddyCloud controls while an ICI connection is active",
+                        "04filters": "control topics, metrics, and log sources with bidirectional forwarding filters",
+                        "05privacy": "automatically remove private and NoCloud-protected content from upstream traffic",
+                        "06capture": "fully diagnose and capture MQTT packets, filter decisions, and TLS connection details"
+                    },
+                    "title": "ICI MQTT for Toniebox 2"
+                },
+                "18tb2Https": {
+                    "items": {
+                        "01modes": "choose between the content-aware V3 cloud path and a transparent DEV monitor",
+                        "02capture": "capture complete HTTP requests, responses, payloads, and status codes",
+                        "03status": "show BOX, ICI, TONIES, and TeddyCloud status plus the active HTTPS mode in the navbar"
+                    },
+                    "title": "TB2 HTTPS modes and diagnostics"
+                },
+                "19customPlaylists": {
+                    "items": {
+                        "01contentPlaylists": "create and edit content-specific TAP playlists for custom TAF files",
+                        "02chapterMetadata": "show custom chapter titles and saved chapter durations in playback and playlists"
+                    },
+                    "title": "Advanced custom content"
+                },
+                "20languages": {
+                    "items": {
+                        "01klingon": "curated Klingon support in the WebUI"
+                    },
+                    "title": "Additional language"
                 }
             },
             "futureFeatures": {

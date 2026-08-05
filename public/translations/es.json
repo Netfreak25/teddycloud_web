@@ -642,6 +642,58 @@
                         "01pluginFeature": "Extiende la funcionalidad de TeddyCloud mediante complementos personalizados"
                     },
                     "title": "Complementos de TeddyCloud"
+                },
+                "15tb2Management": {
+                    "items": {
+                        "01registration": "reconocer automáticamente dispositivos Toniebox 2 y gestionarlos con configuraciones individuales",
+                        "02liveState": "mostrar reproducción, volumen, batería, auriculares y otros estados en tiempo real",
+                        "03liveControls": "controlar directamente reproducción, volumen, ping, hora de dormir y otras funciones de la caja",
+                        "04generationSettings": "separar claramente los ajustes y certificados en Global, TB1 y TB2"
+                    },
+                    "title": "Gestionar dispositivos Toniebox 2"
+                },
+                "16tb2Content": {
+                    "items": {
+                        "01v3Routing": "ruta de nube V3 consciente del contenido con control local de fuente de verdad y NoCloud",
+                        "02nativeCache": "almacenar manifiestos originales de TONIES y capítulos Ogg/Opus con activación atómica de versiones",
+                        "03customContent": "entregar contenido TAF privado a TB2 como capítulos Ogg/Opus independientes y seguros para la caché",
+                        "04freshness": "actualizar contenido modificado mediante freshness HTTPS y notificaciones MQTT QoS 1 fiables",
+                        "05download": "descargar contenido original mediante V1/V2 o V3 según la generación de la caja",
+                        "06library": "importar contenido original TB2 completo de forma nativa y deduplicada por contenido en la biblioteca"
+                    },
+                    "title": "Entrega nativa de contenido TB2"
+                },
+                "17iciMqtt": {
+                    "items": {
+                        "01serverAndUpstream": "servidor MQTT TLS integrado con reenvío ICI transparente opcional",
+                        "02observer": "observar localmente claims, reproducción, volumen, ajustes, métricas y estado de la caja",
+                        "03localControl": "usar de forma segura los controles de TeddyCloud durante una conexión ICI activa",
+                        "04filters": "controlar topics, métricas y fuentes de registro con filtros de reenvío bidireccionales",
+                        "05privacy": "eliminar automáticamente del tráfico upstream el contenido privado y protegido por NoCloud",
+                        "06capture": "diagnosticar y capturar por completo paquetes MQTT, decisiones de filtrado y detalles de conexión TLS"
+                    },
+                    "title": "MQTT ICI para Toniebox 2"
+                },
+                "18tb2Https": {
+                    "items": {
+                        "01modes": "elegir entre la ruta de nube V3 consciente del contenido y un monitor DEV transparente",
+                        "02capture": "capturar solicitudes, respuestas, payloads y códigos de estado HTTP completos",
+                        "03status": "mostrar el estado de BOX, ICI, TONIES y TeddyCloud junto al modo HTTPS activo en la barra de navegación"
+                    },
+                    "title": "Modos HTTPS TB2 y diagnóstico"
+                },
+                "19customPlaylists": {
+                    "items": {
+                        "01contentPlaylists": "crear y editar listas TAP específicas para archivos TAF personalizados",
+                        "02chapterMetadata": "mostrar títulos personalizados y duraciones guardadas de capítulos durante la reproducción y en las listas"
+                    },
+                    "title": "Contenido personalizado avanzado"
+                },
+                "20languages": {
+                    "items": {
+                        "01klingon": "compatibilidad cuidada con klingon en la interfaz web"
+                    },
+                    "title": "Idioma adicional"
                 }
             },
             "futureFeatures": {
