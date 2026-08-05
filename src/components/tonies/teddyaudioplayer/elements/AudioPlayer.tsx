@@ -12,7 +12,7 @@ import {
 } from "@ant-design/icons";
 import { Button, Card, Modal, Slider, Space, theme, Tooltip, Typography } from "antd";
 import { useTranslation } from "react-i18next";
-import { TonieCardProps } from "../../../../types/tonieTypes";
+import { AudioPlaybackItem } from "../../../../types/audioPlaybackTypes";
 import { isIOS, supportsOggOpus } from "../../../../utils/browser/browserUtils";
 
 import logoImg from "../../../../assets/logo.png";
@@ -22,15 +22,19 @@ const { Title, Text } = Typography;
 const { useToken } = theme;
 
 interface AudioPlayerProps {
-    tonieCard?: TonieCardProps;
+    playbackItem?: AudioPlaybackItem;
     playPosition?: number;
     onPlayPositionChange?: (position: number) => void;
+    onChapterChange?: (chapter: number) => void;
+    initialChapter?: number;
 }
 
 const AudioPlayer: React.FC<AudioPlayerProps> = ({
-    tonieCard,
+    playbackItem,
     playPosition,
     onPlayPositionChange,
+    onChapterChange,
+    initialChapter = 0,
 }) => {
     const { t } = useTranslation();
     const { token } = useToken();
@@ -40,6 +44,7 @@ const AudioPlayer: React.FC<AudioPlayerProps> = ({
     const [duration, setDuration] = useState(0);
     const [currentTrackNo, setCurrentTrackNo] = useState(0);
     const [currentTrackTitle, setCurrentTrackTitle] = useState("");
+    const [currentSourceIndex, setCurrentSourceIndex] = useState(initialChapter);
     const [isLoaded, setIsLoaded] = useState(false);
     const [isTracklistVisible, setIsTracklistVisible] = useState(false);
     const [isFullscreen, setIsFullscreen] = useState(false);
@@ -54,18 +59,22 @@ const AudioPlayer: React.FC<AudioPlayerProps> = ({
         return () => document.removeEventListener("fullscreenchange", handler);
     }, []);
 
-    const tracks = tonieCard?.sourceInfo?.tracks || tonieCard?.tonieInfo.tracks || [];
-    const trackSeconds = tonieCard?.trackSeconds || [];
+    const tracks = playbackItem?.tracks || [];
+    const activeTracks = tracks.filter((track) => track.sourceIndex === currentSourceIndex);
+    const trackSeconds = activeTracks.map((track) => track.startSeconds);
+    const url = playbackItem?.sources[currentSourceIndex]?.url || "";
 
-    const url =
-        tonieCard != null
-            ? tonieCard.valid
-                ? import.meta.env.VITE_APP_TEDDYCLOUD_API_URL + tonieCard.audioUrl
-                : tonieCard.source
-            : "";
+    useEffect(() => {
+        const lastSource = Math.max(0, (playbackItem?.sources.length || 1) - 1);
+        setCurrentSourceIndex(Math.min(Math.max(initialChapter, 0), lastSource));
+    }, [playbackItem?.id, initialChapter]);
+
+    useEffect(() => {
+        onChapterChange?.(currentSourceIndex);
+    }, [currentSourceIndex, onChapterChange]);
 
     const validateSource = (url: string) => {
-        const pattern = /\/....04E0\?|(\?ogg)/;
+        const pattern = /\/....04E0\?|(\?ogg)|\.opus(?:\?|$)/;
         if (pattern.test(url) && !supportsOggOpus()) {
             Modal.error({
                 title: "Unsupported Format",
@@ -78,7 +87,7 @@ const AudioPlayer: React.FC<AudioPlayerProps> = ({
 
     useEffect(() => {
         const audio = audioRef.current;
-        if (!audio || !validateSource(url) || !tonieCard) return;
+        if (!audio || !validateSource(url) || !playbackItem) return;
 
         while (audio.firstChild) {
             audio.removeChild(audio.firstChild);
@@ -90,7 +99,7 @@ const AudioPlayer: React.FC<AudioPlayerProps> = ({
         setCurrentTrackTitle("");
         setIsLoaded(false);
 
-        const pattern = /\/....04E0\?|(\?ogg)/;
+        const pattern = /\/....04E0\?|(\?ogg)|\.opus(?:\?|$)/;
         const matches = pattern.test(url);
 
         let sourceElement = audio.querySelector("source");
@@ -99,22 +108,22 @@ const AudioPlayer: React.FC<AudioPlayerProps> = ({
             audio.appendChild(sourceElement);
         }
 
-        if (matches) {
-            sourceElement.type = "audio/ogg";
-        }
+        sourceElement.type = matches ? "audio/ogg" : "";
 
         const encodedUrl = url.replace("+", "%2B").replace("#", "%23");
         if (sourceElement.src !== encodedUrl) {
             sourceElement.src = encodedUrl;
-            if (playPosition) {
-                audio.currentTime = playPosition;
-            }
             audio.load();
         }
 
+        let initialized = false;
         const onLoadedMetadata = () => {
+            if (initialized) return;
+            initialized = true;
             setDuration(audio.duration || 0);
             setIsLoaded(true);
+            const requestedPosition = currentSourceIndex === initialChapter ? playPosition || 0 : 0;
+            audio.currentTime = Math.min(requestedPosition, audio.duration || requestedPosition);
 
             const globalAudio = document.getElementById("globalAudioPlayer") as HTMLAudioElement;
             if (globalAudio) {
@@ -127,17 +136,27 @@ const AudioPlayer: React.FC<AudioPlayerProps> = ({
         };
 
         const onTimeUpdate = (e: Event) => handleTimeUpdate(e);
+        const onEnded = () => {
+            if (
+                playbackItem.kind === "tb2_native_collection" &&
+                currentSourceIndex + 1 < playbackItem.sources.length
+            ) {
+                setCurrentSourceIndex((index) => index + 1);
+            }
+        };
 
         audio.addEventListener("loadedmetadata", onLoadedMetadata);
         audio.addEventListener("canplay", onLoadedMetadata);
         audio.addEventListener("timeupdate", onTimeUpdate);
+        audio.addEventListener("ended", onEnded);
 
         return () => {
             audio.removeEventListener("loadedmetadata", onLoadedMetadata);
             audio.removeEventListener("canplay", onLoadedMetadata);
             audio.removeEventListener("timeupdate", onTimeUpdate);
+            audio.removeEventListener("ended", onEnded);
         };
-    }, [tonieCard]);
+    }, [playbackItem?.id, currentSourceIndex]);
 
     useEffect(() => {
         if (audioRef.current) {
@@ -162,15 +181,15 @@ const AudioPlayer: React.FC<AudioPlayerProps> = ({
 
     useEffect(() => {
         const audio = audioRef.current;
-        if (!audio || !navigator.mediaSession || !tonieCard) return;
+        if (!audio || !navigator.mediaSession || !playbackItem) return;
 
         navigator.mediaSession.metadata = new MediaMetadata({
-            title: currentTrackTitle || tonieCard.tonieInfo.episode || "",
-            album: tonieCard.tonieInfo.episode || "",
-            artist: tonieCard.tonieInfo.series || "",
+            title: currentTrackTitle || playbackItem.title,
+            album: playbackItem.title,
+            artist: playbackItem.subtitle,
             artwork: [
                 {
-                    src: tonieCard.tonieInfo.picture,
+                    src: playbackItem.picture,
                     sizes: "96x96,128x128,192x192,256x256,384x384,512x512",
                 },
             ],
@@ -180,9 +199,9 @@ const AudioPlayer: React.FC<AudioPlayerProps> = ({
         navigator.mediaSession.setActionHandler("pause", () => audio.pause());
         navigator.mediaSession.setActionHandler("previoustrack", handlePrevTrackButton);
         navigator.mediaSession.setActionHandler("nexttrack", handleNextTrackButton);
-    }, [currentTrackTitle, tonieCard]);
+    }, [currentTrackTitle, playbackItem, currentSourceIndex]);
 
-    if (!tonieCard) {
+    if (!playbackItem) {
         return (
             <Card
                 style={{ margin: "auto", textAlign: "center", borderRadius: isFullscreen ? 0 : 12 }}
@@ -256,7 +275,7 @@ const AudioPlayer: React.FC<AudioPlayerProps> = ({
 
         const audio = audioRef.current;
 
-        if (startTime) {
+        if (startTime !== undefined) {
             audio.currentTime = startTime;
         }
 
@@ -283,14 +302,15 @@ const AudioPlayer: React.FC<AudioPlayerProps> = ({
             onPlayPositionChange(audio.currentTime);
         }
 
-        if (tracks.length && trackSeconds.length && tracks.length === trackSeconds.length) {
+        if (activeTracks.length && trackSeconds.length) {
             const index = trackSeconds.findIndex((start, i) => {
                 const next = trackSeconds[i + 1];
                 return audio.currentTime >= start && (!next || audio.currentTime < next);
             });
             if (index !== -1) {
-                setCurrentTrackNo(index + 1);
-                setCurrentTrackTitle(tracks[index]);
+                const absoluteIndex = tracks.indexOf(activeTracks[index]);
+                setCurrentTrackNo(absoluteIndex + 1);
+                setCurrentTrackTitle(activeTracks[index].title);
             } else {
                 setCurrentTrackNo(0);
                 setCurrentTrackTitle("");
@@ -301,6 +321,14 @@ const AudioPlayer: React.FC<AudioPlayerProps> = ({
     const handlePrevTrackButton = () => {
         if (!audioRef.current || !isLoaded) return;
         const audio = audioRef.current;
+        if (playbackItem.kind === "tb2_native_collection") {
+            if (audio.currentTime > 3 || currentSourceIndex === 0) {
+                audio.currentTime = 0;
+            } else {
+                setCurrentSourceIndex((index) => index - 1);
+            }
+            return;
+        }
         let i = 0;
         while (i < trackSeconds.length && audio.currentTime > trackSeconds[i]) i++;
         audio.currentTime = i > 1 ? trackSeconds[i - 2] : 0;
@@ -309,9 +337,26 @@ const AudioPlayer: React.FC<AudioPlayerProps> = ({
     const handleNextTrackButton = () => {
         if (!audioRef.current || !isLoaded) return;
         const audio = audioRef.current;
+        if (playbackItem.kind === "tb2_native_collection") {
+            if (currentSourceIndex + 1 < playbackItem.sources.length) {
+                setCurrentSourceIndex((index) => index + 1);
+            }
+            return;
+        }
         let i = 0;
         while (i < trackSeconds.length && audio.currentTime > trackSeconds[i]) i++;
         if (i < trackSeconds.length) audio.currentTime = trackSeconds[i];
+    };
+
+    const handleSelectTrack = (trackIndex: number) => {
+        const track = playbackItem.tracks[trackIndex];
+        if (!track) return;
+        if (track.sourceIndex === currentSourceIndex) {
+            handlePlay(track.startSeconds);
+        } else {
+            setCurrentSourceIndex(track.sourceIndex);
+        }
+        closeTracklist();
     };
 
     const isFullscreenIOS = isFullscreen && isIOS();
@@ -356,8 +401,8 @@ const AudioPlayer: React.FC<AudioPlayerProps> = ({
             cover={
                 <div style={{ display: "flex", justifyContent: "center" }}>
                     <img
-                        alt={tonieCard.tonieInfo.episode}
-                        src={tonieCard.tonieInfo.picture}
+                        alt={playbackItem.title}
+                        src={playbackItem.picture}
                         style={{
                             borderRadius: 12,
                             objectFit: "contain",
@@ -395,8 +440,8 @@ const AudioPlayer: React.FC<AudioPlayerProps> = ({
                 }}
             >
                 <div>
-                    <Title level={4}>{tonieCard.tonieInfo.episode}</Title>
-                    <Text type="secondary">{tonieCard.tonieInfo.series}</Text>
+                    <Title level={4}>{playbackItem.title}</Title>
+                    <Text type="secondary">{playbackItem.subtitle}</Text>
                     {currentTrackTitle && (
                         <Text style={{ display: "block", marginTop: 8, fontWeight: 500 }}>
                             {currentTrackTitle}
@@ -415,8 +460,8 @@ const AudioPlayer: React.FC<AudioPlayerProps> = ({
                                     ).padStart(2, "0")}`,
                             }}
                             marks={
-                                tonieCard.trackSeconds
-                                    ? tonieCard.trackSeconds.reduce(
+                                trackSeconds.length
+                                    ? trackSeconds.reduce(
                                           (acc: Record<number, string>, sec: number) => {
                                               acc[sec] = " ";
                                               return acc;
@@ -436,8 +481,8 @@ const AudioPlayer: React.FC<AudioPlayerProps> = ({
                         {currentTrackTitle ? (
                             <div>
                                 {currentTrackNo}
-                                {tonieCard.tonieInfo.tracks.length && (
-                                    <> / {tonieCard.tonieInfo.tracks.length}</>
+                                {playbackItem.tracks.length > 0 && (
+                                    <> / {playbackItem.tracks.length}</>
                                 )}
                             </div>
                         ) : (
@@ -460,7 +505,7 @@ const AudioPlayer: React.FC<AudioPlayerProps> = ({
                         type="text"
                         icon={<UnorderedListOutlined style={{ fontSize: 30 }} />}
                         onClick={() => openTracklist()}
-                        disabled={!isLoaded || tonieCard.tonieInfo.tracks.length == 0}
+                        disabled={!isLoaded || playbackItem.tracks.length === 0}
                     />
                     <Button
                         type="text"
@@ -513,9 +558,9 @@ const AudioPlayer: React.FC<AudioPlayerProps> = ({
 
             <TracklistModal
                 open={isTracklistVisible}
-                tonieCard={tonieCard}
+                playbackItem={playbackItem}
                 onClose={closeTracklist}
-                onSelectTrack={handlePlay}
+                onSelectTrack={handleSelectTrack}
                 getContainer={() => cardRef.current || document.body}
             />
         </Card>

@@ -18,6 +18,13 @@ import { TeddyAudioPlayer } from "../../components/tonies/teddyaudioplayer/Teddy
 import LoadingSpinner from "../../components/common/elements/LoadingSpinner";
 import { useTonies } from "../../hooks/useTonies";
 import { useAudioContext } from "../../provider/AudioProvider";
+import { AudioPlaybackItem } from "../../types/audioPlaybackTypes";
+import { Record } from "../../types/fileBrowserTypes";
+import {
+    isNativeCollectionRecord,
+    nativeCollectionToPlaybackItem,
+} from "../../utils/audio/nativeCollection";
+import { tonieToPlaybackItem } from "../../utils/audio/playbackItem";
 
 type TeddyAudioPlayerPageProps = {
     standalone?: boolean;
@@ -30,24 +37,35 @@ export const TeddyAudioPlayerPage: React.FC<TeddyAudioPlayerPageProps> = ({
     const navigate = useNavigate();
     const searchParams = new URLSearchParams(location.search);
     const tonieRuid = searchParams.get("ruid");
+    const contentHash = searchParams.get("contentHash");
+    const startChapter = Number(searchParams.get("chapter")) || 0;
     const startPosition = Number(searchParams.get("position")) || 0;
     const linkOverlay = searchParams.get("overlay");
 
     const { t } = useTranslation();
-    const { playAudio } = useAudioContext();
+    const { playPlaybackItem } = useAudioContext();
     const { overlay } = useTonieboxContent(linkOverlay);
 
     const contentRef = useRef<HTMLDivElement>(null);
 
     const [currentPlayPosition, setCurrentPlayPosition] = useState<number | undefined>(0);
-    const [currentTonie, setCurrentTonie] = useState<TonieCardProps>();
+    const [currentItem, setCurrentItem] = useState<AudioPlaybackItem>();
+    const [currentChapter, setCurrentChapter] = useState(startChapter);
+    const [nativeRecords, setNativeRecords] = useState<Record[]>([]);
+    const [nativeLoading, setNativeLoading] = useState(true);
     const [playerKey, setPlayerKey] = useState(0);
 
     const openStandalone = () => {
-        if (currentTonie) {
+        if (currentItem) {
             const params = new URLSearchParams();
-            params.set("ruid", currentTonie.ruid);
+            if (currentItem.kind === "tb2_native_collection") {
+                params.set("contentHash", currentItem.id);
+                params.set("chapter", currentChapter.toString());
+            } else {
+                params.set("ruid", currentItem.id);
+            }
             params.set("position", (currentPlayPosition ?? 0).toString());
+            if (overlay) params.set("overlay", overlay);
             window.open(`../audioplayer?${params.toString()}`, "_blank");
         } else {
             window.open("../audioplayer", "_blank");
@@ -75,6 +93,7 @@ export const TeddyAudioPlayerPage: React.FC<TeddyAudioPlayerPageProps> = ({
     const playableTonieCards = useMemo(() => {
         const seen = new Set<string>();
         return tonies.filter((tonie) => {
+            if (tonie.source.startsWith("lib://by/contentHash/")) return false;
             const isPlayable = tonie.valid || tonie.source.startsWith("http");
             if (!isPlayable) return false;
 
@@ -87,24 +106,80 @@ export const TeddyAudioPlayerPage: React.FC<TeddyAudioPlayerPageProps> = ({
     }, [tonies]);
 
     useEffect(() => {
-        if (tonieRuid && playableTonieCards) {
-            const tonie = playableTonieCards.find((t) => t.ruid === tonieRuid);
-            if (!tonie) {
-                return;
-            }
-            const newTonie = {
-                ...tonie,
-                tonieInfo: {
-                    ...tonie.tonieInfo,
-                    ...tonie.sourceInfo,
-                },
-            };
-            setCurrentTonie(newTonie);
+        let cancelled = false;
+        setNativeLoading(true);
+        const params = new URLSearchParams({ path: "by/contentHash", special: "library" });
+        if (overlay) params.set("overlay", overlay);
+        fetch(`${import.meta.env.VITE_APP_TEDDYCLOUD_API_URL}/api/fileIndexV2?${params.toString()}`)
+            .then((response) => {
+                if (!response.ok) throw new Error(`HTTP ${response.status}`);
+                return response.json();
+            })
+            .then((payload) => {
+                if (!cancelled) {
+                    setNativeRecords(
+                        ((payload.files || []) as Record[]).filter(isNativeCollectionRecord),
+                    );
+                }
+            })
+            .catch(() => {
+                if (!cancelled) setNativeRecords([]);
+            })
+            .finally(() => {
+                if (!cancelled) setNativeLoading(false);
+            });
+        return () => {
+            cancelled = true;
+        };
+    }, [overlay]);
+
+    const playbackItems = useMemo(() => {
+        const standardItems = playableTonieCards.map(tonieToPlaybackItem);
+        const nativeItems = nativeRecords.map((record) => {
+            const collection = record.nativeCollection!;
+            const source = `lib://by/contentHash/${collection.contentHash}/library-entry.json`;
+            const assigned = tonies.find((tonie) => tonie.source === source);
+            const title = assigned?.sourceInfo?.series || assigned?.tonieInfo.series;
+            const subtitle = assigned?.sourceInfo?.episode || assigned?.tonieInfo.episode;
+            const picture = assigned?.sourceInfo?.picture || assigned?.tonieInfo.picture;
+            return nativeCollectionToPlaybackItem(collection, overlay, {
+                title,
+                subtitle,
+                picture,
+            });
+        });
+        const seen = new Set<string>();
+        return [...standardItems, ...nativeItems].filter((item) => {
+            const key = `${item.kind}:${item.id}`;
+            if (seen.has(key)) return false;
+            seen.add(key);
+            return true;
+        });
+    }, [nativeRecords, overlay, playableTonieCards, tonies]);
+
+    useEffect(() => {
+        const item = contentHash
+            ? playbackItems.find(
+                  (candidate) =>
+                      candidate.kind === "tb2_native_collection" && candidate.id === contentHash,
+              )
+            : playbackItems.find((candidate) => candidate.id === tonieRuid);
+        if (item) {
+            setCurrentItem(item);
             setCurrentPlayPosition(startPosition);
+            setCurrentChapter(contentHash ? startChapter : 0);
             setPlayerKey((prev) => prev + 1);
             navigate(location.pathname, { replace: true });
         }
-    }, [location, playableTonieCards, tonieRuid, startPosition]);
+    }, [
+        contentHash,
+        location.pathname,
+        navigate,
+        playbackItems,
+        startChapter,
+        startPosition,
+        tonieRuid,
+    ]);
 
     const teddyAudioPlayerContent = (
         <StyledContent
@@ -117,24 +192,18 @@ export const TeddyAudioPlayerPage: React.FC<TeddyAudioPlayerPageProps> = ({
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                 <h1>{t("tonies.teddyaudioplayer.title")}</h1>
                 <div style={{ display: "flex", gap: 8 }}>
-                    {currentTonie && !standalone && (
+                    {currentItem && !standalone && (
                         <ImportOutlined
                             title={t("tonies.teddyaudioplayer.continueInFooterAudioPlayer")}
                             onClick={() => {
-                                const newTonie = {
-                                    ...currentTonie,
-                                    tonieInfo: {
-                                        ...currentTonie.tonieInfo,
-                                        ...currentTonie.sourceInfo,
-                                    },
-                                };
-                                playAudio(
-                                    import.meta.env.VITE_APP_TEDDYCLOUD_API_URL + newTonie.audioUrl,
-                                    newTonie.tonieInfo,
-                                    newTonie,
+                                playPlaybackItem(
+                                    currentItem,
+                                    currentItem.tracks.findIndex(
+                                        (track) => track.sourceIndex === currentChapter,
+                                    ),
                                     currentPlayPosition,
                                 );
-                                setCurrentTonie(undefined);
+                                setCurrentItem(undefined);
                                 setCurrentPlayPosition(0);
                                 setPlayerKey((prev) => prev + 1);
                             }}
@@ -151,17 +220,18 @@ export const TeddyAudioPlayerPage: React.FC<TeddyAudioPlayerPageProps> = ({
                 </div>
             </div>
 
-            {loading ? (
+            {loading || nativeLoading ? (
                 <LoadingSpinner />
             ) : (
                 <TeddyAudioPlayer
                     key={playerKey}
-                    tonieCards={playableTonieCards}
-                    overlay={overlay}
-                    preselectedTonieCard={currentTonie}
+                    playbackItems={playbackItems}
+                    preselectedItem={currentItem}
                     preselectedPlayPosition={currentPlayPosition}
-                    onToniesChange={(tonie) => setCurrentTonie(tonie)}
+                    preselectedChapter={currentChapter}
+                    onItemChange={(item) => setCurrentItem(item)}
                     onPlayPositionChange={(pos) => setCurrentPlayPosition(pos)}
+                    onChapterChange={setCurrentChapter}
                 />
             )}
         </StyledContent>

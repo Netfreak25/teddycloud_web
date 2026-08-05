@@ -345,6 +345,14 @@
         "deleteMultiple": "{{selectedRowCount}} markierte Zeilen löschen",
         "downloadFile": "Download file",
         "downloadFileAsOgg": "Download TAF als *.ogg",
+        "nativeCollection": {
+            "deleteTitle": "TB2-Collection löschen",
+            "deleteWarning": "Zuweisungen, die diese Collection verwenden, können danach nicht mehr abgespielt werden. Wenn der TB2-Bibliothekscache aktiv ist, kann TONIES-Content später erneut importiert werden.",
+            "downloadFailed": "Collection-Download fehlgeschlagen",
+            "downloadZip": "Collection als ZIP herunterladen",
+            "open": "Collection öffnen",
+            "summary": "{{count}} Kapitel · {{size}}"
+        },
         "encodeFiles": {
             "addFiles": "Dateien hinzufügen",
             "cancel": "Abbrechen",
@@ -3265,6 +3273,7 @@
         "noPlayableContentHint": "Es ist kein Inhalt zum Abspielen verfügbar. Entweder ist er nicht zugewiesen oder es fehlen Daten von der Tonies/Boxine-Cloud. Stelle die Figur auf die Box, um dies zu beheben.",
         "selectFileModal": {
             "cancel": "Abbrechen",
+            "nativeCollection": "TB2-Ursprung · Ogg/Opus · {{count}} Kapitel · {{hash}}",
             "ok": "OK",
             "selectFile": "Datei auswählen"
         },

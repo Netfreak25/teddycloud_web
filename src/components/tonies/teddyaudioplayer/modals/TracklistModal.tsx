@@ -3,28 +3,19 @@ import { Modal, Divider, Flex } from "antd";
 import { PlayCircleOutlined } from "@ant-design/icons";
 import { useTranslation } from "react-i18next";
 
-import { TonieCardProps } from "../../../../types/tonieTypes";
+import { AudioPlaybackItem } from "../../../../types/audioPlaybackTypes";
 
 interface TracklistModalProps {
     open: boolean;
-    tonieCard: TonieCardProps;
+    playbackItem: AudioPlaybackItem;
     onClose: () => void;
-    onSelectTrack: (startTime: number) => void;
+    onSelectTrack: (trackIndex: number) => void;
     getContainer: () => HTMLElement;
 }
 
-const trackSecondsMatchSourceTracks = (tonieCard: TonieCardProps, tracksLength: number) => {
-    return tonieCard.trackSeconds?.length === tracksLength;
-};
-
-const getTrackStartTime = (tonieCard: TonieCardProps, index: number) => {
-    const trackSeconds = tonieCard.trackSeconds;
-    return (trackSeconds && trackSeconds[index]) || 0;
-};
-
 const TracklistModal: React.FC<TracklistModalProps> = ({
     open,
-    tonieCard,
+    playbackItem,
     onClose,
     onSelectTrack,
     getContainer,
@@ -32,11 +23,9 @@ const TracklistModal: React.FC<TracklistModalProps> = ({
     const { t } = useTranslation();
 
     const title =
-        tonieCard?.tonieInfo?.series +
-            (tonieCard?.tonieInfo.episode && " - " + tonieCard?.tonieInfo.episode) ||
+        [playbackItem.title, playbackItem.subtitle].filter(Boolean).join(" - ") ||
         t("tonies.teddyaudioplayer.unknown");
-
-    const tracks = tonieCard?.tonieInfo?.tracks || [];
+    const tracks = playbackItem.tracks;
 
     return (
         <Modal
@@ -48,20 +37,13 @@ const TracklistModal: React.FC<TracklistModalProps> = ({
         >
             {tracks.length ? (
                 <Flex vertical gap={4}>
-                    {tracks.map((track: string, index: number) => (
+                    {tracks.map((track, index) => (
                         <div key={index}>
                             <div style={{ display: "flex", gap: 16, textAlign: "left" }}>
-                                {trackSecondsMatchSourceTracks(tonieCard, tracks.length) && (
-                                    <PlayCircleOutlined
-                                        onClick={() => {
-                                            onClose();
-                                            onSelectTrack(getTrackStartTime(tonieCard, index));
-                                        }}
-                                    />
-                                )}
+                                <PlayCircleOutlined onClick={() => onSelectTrack(index)} />
 
                                 <div>
-                                    {index + 1}. {track}
+                                    {index + 1}. {track.title}
                                 </div>
                             </div>
                             {index < tracks.length - 1 && <Divider style={{ margin: "8px 0" }} />}

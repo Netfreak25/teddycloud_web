@@ -25,6 +25,14 @@
             "cancel": "qIl"
         },
         "delete": "Qaw'",
+        "nativeCollection": {
+            "deleteTitle": "TB2 ghommey Qaw'",
+            "deleteWarning": "ghomvam lo'bogh rarghachmey chu'laHbe'choH. TB2 library cache chu'lu'chugh, TONIES ngaSbogh Dochmey qengqa'laH TeddyCloud.",
+            "downloadFailed": "ghom qengHa' Qagh",
+            "downloadZip": "ghom ZIP qengHa'",
+            "open": "ghom poSmoH",
+            "summary": "{{count}} 'ay'mey · {{size}}"
+        },
         "encodeFiles": {
             "cancel": "qIl"
         },

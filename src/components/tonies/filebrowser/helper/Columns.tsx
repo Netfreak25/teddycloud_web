@@ -12,6 +12,7 @@ import {
     NodeExpandOutlined,
     DeleteOutlined,
     LoadingOutlined,
+    FolderOpenOutlined,
 } from "@ant-design/icons";
 
 import { IMAGE_EXTENSIONS } from "../../../../constants/fileTypes";
@@ -76,9 +77,13 @@ export interface CreateColumnsOptions {
     showRenameDialog?: (fileName: string) => void;
     showMoveDialog?: (fileName: string) => void;
     showDeleteConfirmDialog?: (fileName: string, fullPath: string, query: string) => void;
+    playNativeCollection?: (record: Record) => void;
+    downloadNativeCollection?: (record: Record) => void;
+    deleteNativeCollection?: (record: Record) => void;
     buildContentUrl?: (fileName: string, options?: { ogg?: boolean }) => string;
     onImagePreviewClick?: (imageUrl: string) => void;
     onRowSelect?: (record: Record) => void;
+    selectNativeCollections?: boolean;
     /** compact custom_img: false when single-select (no visible checkbox column). */
     compactSelectHasVisibleSelectionColumn?: boolean;
 }
@@ -111,9 +116,14 @@ export const createColumns = (options: CreateColumnsOptions): any[] => {
         showRenameDialog,
         showMoveDialog,
         showDeleteConfirmDialog,
+        handleDirClick,
+        playNativeCollection,
+        downloadNativeCollection,
+        deleteNativeCollection,
         buildContentUrl,
         onImagePreviewClick,
         onRowSelect,
+        selectNativeCollections,
         compactSelectHasVisibleSelectionColumn: compactSelectHasVisibleSelectionColumnOpt,
     } = options;
 
@@ -222,7 +232,29 @@ export const createColumns = (options: CreateColumnsOptions): any[] => {
                     isImageFileName(record?.name) &&
                     onImagePreviewClick;
                 const isSelectableFile =
-                    mode === "select" && onRowSelect && !record?.isDir && record?.name !== "..";
+                    mode === "select" &&
+                    onRowSelect &&
+                    (!record?.isDir || (selectNativeCollections && record?.nativeCollection)) &&
+                    record?.name !== "..";
+                const displayName = record?.nativeCollection ? (
+                    mode === "full" ? (
+                        <span title={record.nativeCollection.contentHash}>
+                            <span className="showSmallDevicesOnly">
+                                {record.nativeCollection.contentHash.slice(0, 12)}…
+                            </span>
+                            <span className="showMediumDevicesOnly showBigDevicesOnly">
+                                {record.nativeCollection.contentHash}
+                            </span>
+                        </span>
+                    ) : (
+                        t("tonies.selectFileModal.nativeCollection", {
+                            count: record.nativeCollection.chapterCount,
+                            hash: record.nativeCollection.contentHash.slice(0, 12),
+                        })
+                    )
+                ) : (
+                    record.name
+                );
                 const nameContent = isSelectableFile ? (
                     <span
                         role="button"
@@ -239,7 +271,7 @@ export const createColumns = (options: CreateColumnsOptions): any[] => {
                             }
                         }}
                     >
-                        {record.name}
+                        {displayName}
                     </span>
                 ) : isImagePreviewClickable ? (
                     <span
@@ -259,13 +291,25 @@ export const createColumns = (options: CreateColumnsOptions): any[] => {
                             }
                         }}
                     >
-                        {record.name}
+                        {displayName}
                     </span>
                 ) : record?.isDir ? (
-                    <>{record.name}</>
+                    <>{displayName}</>
                 ) : (
-                    record?.name
+                    displayName
                 );
+                const nativeMetadata =
+                    record.nativeCollection && mode === "full" ? (
+                        <div style={{ marginTop: 4 }}>
+                            <Tag color="blue">TB2 / Ogg-Opus</Tag>
+                            <span>
+                                {t("fileBrowser.nativeCollection.summary", {
+                                    count: record.nativeCollection.chapterCount,
+                                    size: humanFileSize(record.nativeCollection.totalSize),
+                                })}
+                            </span>
+                        </div>
+                    ) : null;
                 if (isCompactCustomSelect) {
                     return wrapCompactCustomCell(
                         <div
@@ -296,6 +340,7 @@ export const createColumns = (options: CreateColumnsOptions): any[] => {
                                             }}
                                         >
                                             {nameContent}
+                                            {nativeMetadata}
                                         </div>
                                     </div>
                                     {mode === "full" && !record.isDir && record.size
@@ -340,6 +385,7 @@ export const createColumns = (options: CreateColumnsOptions): any[] => {
                                             }}
                                         >
                                             {nameContent}
+                                            {nativeMetadata}
                                         </div>
                                     </div>
                                     {mode === "full" && !record.isDir && record.size
@@ -366,6 +412,7 @@ export const createColumns = (options: CreateColumnsOptions): any[] => {
                                         }}
                                     >
                                         {nameContent}
+                                        {nativeMetadata}
                                     </div>
                                 </div>
                             </div>
@@ -379,6 +426,9 @@ export const createColumns = (options: CreateColumnsOptions): any[] => {
                 return (
                     record.name === ".." ||
                     record.name.toLowerCase().includes(text) ||
+                    record.nativeCollection?.chapters.some((chapter) =>
+                        chapter.originalName.toLowerCase().includes(text),
+                    ) ||
                     (!record.isDir &&
                         "tafHeader" in record &&
                         record.tafHeader.size &&
@@ -495,6 +545,43 @@ export const createColumns = (options: CreateColumnsOptions): any[] => {
         sorter: undefined,
         render: (name: string, record: any) => {
             const actions: React.ReactNode[] = [];
+
+            if (mode === "full" && record.nativeCollection) {
+                return (
+                    <div
+                        style={{ display: "flex", alignItems: "center", flexWrap: "wrap", gap: 4 }}
+                    >
+                        <Tooltip title={t("fileBrowser.nativeCollection.open")}>
+                            <FolderOpenOutlined
+                                key={`native-open-${record.name}`}
+                                style={{ margin: "4px 8px 4px 0", padding: 4 }}
+                                onClick={() => handleDirClick(record.name)}
+                            />
+                        </Tooltip>
+                        <Tooltip title={t("fileBrowser.playFile")}>
+                            <PlayCircleOutlined
+                                key={`native-play-${record.name}`}
+                                style={{ margin: "4px 8px 4px 0", padding: 4 }}
+                                onClick={() => playNativeCollection?.(record)}
+                            />
+                        </Tooltip>
+                        <Tooltip title={t("fileBrowser.nativeCollection.downloadZip")}>
+                            <DownloadOutlined
+                                key={`native-download-${record.name}`}
+                                style={{ margin: "4px 8px 4px 0", padding: 4 }}
+                                onClick={() => downloadNativeCollection?.(record)}
+                            />
+                        </Tooltip>
+                        <Tooltip title={t("fileBrowser.delete")}>
+                            <DeleteOutlined
+                                key={`native-delete-${record.name}`}
+                                style={{ margin: "4px 8px 4px 0", padding: 4 }}
+                                onClick={() => deleteNativeCollection?.(record)}
+                            />
+                        </Tooltip>
+                    </div>
+                );
+            }
 
             if (
                 !record.isDir &&

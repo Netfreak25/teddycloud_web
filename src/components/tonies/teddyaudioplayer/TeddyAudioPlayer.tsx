@@ -1,8 +1,8 @@
 import React, { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { Card, Empty, Input, theme } from "antd";
-import { LeftOutlined, PlayCircleOutlined, RightOutlined, SearchOutlined } from "@ant-design/icons";
+import { LeftOutlined, PlayCircleOutlined, RightOutlined } from "@ant-design/icons";
 
-import { TonieCardProps } from "../../../types/tonieTypes";
+import { AudioPlaybackItem } from "../../../types/audioPlaybackTypes";
 import StandAloneAudioPlayer from "./elements/AudioPlayer";
 import { useHoldToScroll } from "./hooks/useHoldToScroll";
 import { useHorizontalDragScroll } from "./hooks/useHorizontalDragScroll";
@@ -15,31 +15,31 @@ import { toImageSrc } from "../common/utils/imagePathUtils";
 const { useToken } = theme;
 
 export interface TeddyAudioPlayerProps {
-    tonieCards: TonieCardProps[];
-    overlay: string;
-    preselectedTonieCard?: TonieCardProps;
+    playbackItems: AudioPlaybackItem[];
+    preselectedItem?: AudioPlaybackItem;
     preselectedPlayPosition?: number;
-    onToniesChange?: (toniecard: TonieCardProps | undefined) => void;
+    preselectedChapter?: number;
+    onItemChange?: (item: AudioPlaybackItem | undefined) => void;
     onPlayPositionChange?: (position: number) => void;
+    onChapterChange?: (chapter: number) => void;
 }
 
 export const TeddyAudioPlayer: React.FC<TeddyAudioPlayerProps> = ({
-    tonieCards,
-    overlay,
-    preselectedTonieCard,
+    playbackItems,
+    preselectedItem,
     preselectedPlayPosition,
-    onToniesChange,
+    preselectedChapter,
+    onItemChange,
     onPlayPositionChange,
+    onChapterChange,
 }) => {
     const { t } = useTranslation();
     const { token } = useToken();
     const containerRef = useRef<HTMLDivElement | null>(null);
 
-    const [currentTonie, setCurrentTonie] = useState<TonieCardProps | undefined>(
-        preselectedTonieCard,
-    );
+    const [currentItem, setCurrentItem] = useState<AudioPlaybackItem | undefined>(preselectedItem);
     const [playPosition, setPlayPosition] = useState<number>(preselectedPlayPosition ?? 0);
-    const [hoveredTonieRUID, setHoveredTonieRUID] = useState<string | null>(null);
+    const [hoveredItemId, setHoveredItemId] = useState<string | null>(null);
 
     const scrollSpeed = 20;
     const allLoaded = usePageLoaded();
@@ -52,34 +52,27 @@ export const TeddyAudioPlayer: React.FC<TeddyAudioPlayerProps> = ({
     );
 
     useEffect(() => {
-        if (!preselectedTonieCard) {
-            setCurrentTonie(undefined);
+        if (!preselectedItem) {
+            setCurrentItem(undefined);
             return;
         }
-        handlePlay(preselectedTonieCard);
+        handlePlay(preselectedItem);
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [preselectedTonieCard]);
+    }, [preselectedItem]);
 
-    const handlePlay = (tonie: TonieCardProps | undefined) => {
-        onToniesChange?.(tonie);
+    const handlePlay = (item: AudioPlaybackItem | undefined) => {
+        onItemChange?.(item);
 
-        if (!tonie) {
-            setCurrentTonie(undefined);
+        if (!item) {
+            setCurrentItem(undefined);
             return;
         }
 
         if (!allLoaded) return;
 
-        const newTonie: TonieCardProps = {
-            ...tonie,
-            tonieInfo: {
-                ...tonie.tonieInfo,
-                ...tonie.sourceInfo,
-            },
-        };
-
         setPlayPosition(0);
-        setCurrentTonie(newTonie);
+        onChapterChange?.(0);
+        setCurrentItem(item);
     };
 
     const [searchText, setSearchText] = useState("");
@@ -92,18 +85,11 @@ export const TeddyAudioPlayer: React.FC<TeddyAudioPlayerProps> = ({
 
     const q = searchText.trim().toLowerCase();
 
-    const filteredTonieCards = tonieCards.filter((tonie) => {
-        const series =
-            tonie.sourceInfo?.series ??
-            tonie.tonieInfo?.series ??
-            t("tonies.teddyaudioplayer.unknown");
-
-        const episode = tonie.sourceInfo?.episode ?? tonie.tonieInfo?.episode ?? ""; // keep as string
-
-        // if filter is empty, show all
+    const filteredItems = playbackItems.filter((item) => {
         if (!q) return true;
-
-        return series.toLowerCase().includes(q) || episode.toLowerCase().includes(q);
+        return [item.title, item.subtitle, item.searchText || ""].some((value) =>
+            value.toLowerCase().includes(q),
+        );
     });
 
     const [contentOverflows, setContentOverflows] = useState(false);
@@ -131,18 +117,20 @@ export const TeddyAudioPlayer: React.FC<TeddyAudioPlayerProps> = ({
         const el = containerRef.current;
         if (!el) return;
         setContentOverflows(el.scrollWidth > el.clientWidth);
-    }, [filteredTonieCards.length]);
+    }, [filteredItems.length]);
 
     return (
         <div>
             <div style={{ marginBottom: 16 }}>
                 <StandAloneAudioPlayer
-                    tonieCard={currentTonie}
+                    playbackItem={currentItem}
                     playPosition={playPosition}
+                    initialChapter={preselectedChapter}
                     onPlayPositionChange={(pos) => {
                         setPlayPosition(pos);
                         onPlayPositionChange?.(pos);
                     }}
+                    onChapterChange={onChapterChange}
                 />
             </div>
 
@@ -199,23 +187,12 @@ export const TeddyAudioPlayer: React.FC<TeddyAudioPlayerProps> = ({
                         justifyContent: !contentOverflows ? "center" : "flex-start",
                     }}
                 >
-                    {filteredTonieCards.length > 0 ? (
-                        filteredTonieCards.map((tonie) => {
-                            const series =
-                                tonie.sourceInfo?.series ||
-                                tonie.tonieInfo.series ||
-                                t("tonies.teddyaudioplayer.unknown");
-                            const episode =
-                                tonie.sourceInfo?.episode || tonie.tonieInfo.episode || "";
-                            const picture =
-                                tonie.sourceInfo?.picture ||
-                                tonie.tonieInfo.picture ||
-                                "/img_unknown.png";
-
+                    {filteredItems.length > 0 ? (
+                        filteredItems.map((item) => {
                             return (
-                                <div key={tonie.ruid} style={{ flex: "0 0 auto", width: 150 }}>
+                                <div key={item.id} style={{ flex: "0 0 auto", width: 150 }}>
                                     <Card
-                                        title={series}
+                                        title={item.title}
                                         size="small"
                                         cover={
                                             <div
@@ -224,12 +201,12 @@ export const TeddyAudioPlayer: React.FC<TeddyAudioPlayerProps> = ({
                                                     height: 100,
                                                     width: "100%",
                                                 }}
-                                                onMouseEnter={() => setHoveredTonieRUID(tonie.ruid)}
-                                                onMouseLeave={() => setHoveredTonieRUID(null)}
+                                                onMouseEnter={() => setHoveredItemId(item.id)}
+                                                onMouseLeave={() => setHoveredItemId(null)}
                                             >
                                                 <img
-                                                    src={toImageSrc(picture)}
-                                                    alt={series}
+                                                    src={toImageSrc(item.picture)}
+                                                    alt={item.title}
                                                     style={{
                                                         width: "100%",
                                                         height: "100%",
@@ -254,12 +231,10 @@ export const TeddyAudioPlayer: React.FC<TeddyAudioPlayerProps> = ({
                                                             transform: "translate(-50%, -50%)",
                                                             borderRadius: "50%",
                                                             opacity:
-                                                                hoveredTonieRUID === tonie.ruid
-                                                                    ? 0.8
-                                                                    : 0,
+                                                                hoveredItemId === item.id ? 0.8 : 0,
                                                             transition: "opacity 0.3s",
                                                         }}
-                                                        onClick={() => handlePlay(tonie)}
+                                                        onClick={() => handlePlay(item)}
                                                     />
                                                 )}
                                             </div>
@@ -280,7 +255,7 @@ export const TeddyAudioPlayer: React.FC<TeddyAudioPlayerProps> = ({
                                                         minHeight: "2.4em",
                                                     }}
                                                 >
-                                                    {episode}
+                                                    {item.subtitle}
                                                 </div>
                                             }
                                         />

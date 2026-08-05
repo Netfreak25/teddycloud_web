@@ -14,10 +14,30 @@ export interface FileObject {
     path: string;
 }
 
+export interface NativeCollectionSummary {
+    source: string;
+    contentHash: string;
+    chapterCount: number;
+    format: "ogg-opus";
+    totalSize: number;
+    manifestPath: string;
+    chapters: NativeCollectionChapter[];
+}
+
+export interface NativeCollectionChapter {
+    index: number;
+    originalName: string;
+    sha256: string;
+    fileSize: number;
+    path: string;
+}
+
 export type Record = {
     date: number;
     isDir: boolean;
     name: string;
     tafHeader: RecordTafHeader;
     tonieInfo: TonieInfo;
+    entryKind?: "tb2_native_collection";
+    nativeCollection?: NativeCollectionSummary;
 };

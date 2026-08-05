@@ -40,8 +40,17 @@ const AudioPlayerFooter: React.FC<AudioPlayerFooterProps> = ({ onVisibilityChang
     const { t } = useTranslation();
     const navigate = useNavigate();
 
-    const { songImage, songArtist, songTitle, songTracks, tonieCardOrTAFRecord } =
-        useAudioContext();
+    const {
+        songImage,
+        songArtist,
+        songTitle,
+        songTracks,
+        tonieCardOrTAFRecord,
+        playbackItem,
+        currentSourceIndex,
+        playPreviousTrack,
+        playNextTrack,
+    } = useAudioContext();
     const globalAudio = document.getElementById("globalAudioPlayer") as HTMLAudioElement | null;
 
     const [audioPlayerDisplay, setAudioPlayerDisplay] = useState<string>("none");
@@ -106,15 +115,18 @@ const AudioPlayerFooter: React.FC<AudioPlayerFooterProps> = ({ onVisibilityChang
 
     useEffect(() => {
         const calculatePlayerWidth = () => {
-            if (tonieCardOrTAFRecord) {
+            if (tonieCardOrTAFRecord || playbackItem) {
                 const songContainer = document.querySelector(".songContainer") || document.body;
                 const computed = getComputedStyle(songContainer);
                 const font = `${computed.fontSize} ${computed.fontFamily}`;
 
-                const tracks =
-                    ("sourceInfo" in tonieCardOrTAFRecord && tonieCardOrTAFRecord.sourceInfo
-                        ? tonieCardOrTAFRecord.sourceInfo?.tracks
-                        : tonieCardOrTAFRecord.tonieInfo?.tracks) ?? [];
+                const tracks = playbackItem
+                    ? playbackItem.tracks.map((track) => track.title)
+                    : ((tonieCardOrTAFRecord &&
+                          ("sourceInfo" in tonieCardOrTAFRecord && tonieCardOrTAFRecord.sourceInfo
+                              ? tonieCardOrTAFRecord.sourceInfo?.tracks
+                              : tonieCardOrTAFRecord.tonieInfo?.tracks)) ??
+                      []);
 
                 const longestString = getLongestStringByPixelWidth(
                     [...tracks, songArtist, songTitle],
@@ -131,7 +143,7 @@ const AudioPlayerFooter: React.FC<AudioPlayerFooterProps> = ({ onVisibilityChang
         setDisplaySongTitle(songTitle);
         setDisplaySongArtist(songArtist);
         setCurrentTrackTitle("");
-    }, [songTracks, songTitle, songArtist, tonieCardOrTAFRecord]);
+    }, [songTracks, songTitle, songArtist, tonieCardOrTAFRecord, playbackItem]);
 
     // Initiale Track-Nummer
     useEffect(() => {
@@ -139,7 +151,7 @@ const AudioPlayerFooter: React.FC<AudioPlayerFooterProps> = ({ onVisibilityChang
             setCurrentTrackNo(0);
             setCurrentTrackTitle("");
         }
-    }, [globalAudio?.querySelector("source")]);
+    }, [globalAudio?.querySelector("source"), currentSourceIndex]);
 
     useEffect(() => {
         onVisibilityChange(audioPlayerDisplay !== "none");
@@ -216,6 +228,15 @@ const AudioPlayerFooter: React.FC<AudioPlayerFooterProps> = ({ onVisibilityChang
         const seconds = Math.floor(audioElement.currentTime % 60);
         setCurrentPlayPosition((audioElement.currentTime / (globalAudio?.duration || 1)) * 100);
         setCurrentPlayPositionFormat(`${minutes}:${seconds < 10 ? "0" : ""}${seconds}`);
+
+        if (playbackItem?.kind === "tb2_native_collection") {
+            const trackIndex = playbackItem.tracks.findIndex(
+                (track) => track.sourceIndex === currentSourceIndex,
+            );
+            setCurrentTrackNo(trackIndex >= 0 ? trackIndex + 1 : 0);
+            setCurrentTrackTitle(trackIndex >= 0 ? playbackItem.tracks[trackIndex].title : "");
+            return;
+        }
 
         const trackSeconds =
             (tonieCardOrTAFRecord &&
@@ -306,6 +327,10 @@ const AudioPlayerFooter: React.FC<AudioPlayerFooterProps> = ({ onVisibilityChang
     };
 
     const handlePrevTrackButton = () => {
+        if (playbackItem?.kind === "tb2_native_collection") {
+            playPreviousTrack();
+            return;
+        }
         if (!globalAudio || songTracks.length === 0) return;
         let i = 0;
         while (globalAudio.currentTime > songTracks[i]) {
@@ -320,6 +345,10 @@ const AudioPlayerFooter: React.FC<AudioPlayerFooterProps> = ({ onVisibilityChang
     };
 
     const handleNextTrackButton = () => {
+        if (playbackItem?.kind === "tb2_native_collection") {
+            playNextTrack();
+            return;
+        }
         if (!globalAudio || songTracks.length === 0) return;
         let i = 0;
         while (globalAudio.currentTime > songTracks[i]) {

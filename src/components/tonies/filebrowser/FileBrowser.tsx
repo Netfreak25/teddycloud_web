@@ -47,6 +47,11 @@ import { canHover } from "../../../utils/browser/browserUtils";
 import { useTapEditor } from "./hooks/useTAPEditor";
 import { UnusedTAFsModal } from "./modals/UnusedTAFsModal";
 import CustomJsonSnippetModal from "./modals/CustomJsonSnippetModal";
+import {
+    downloadNativeCollectionZip,
+    isNativeCollectionRecord,
+    nativeCollectionToPlaybackItem,
+} from "../../../utils/audio/nativeCollection";
 
 const { Paragraph } = Typography;
 
@@ -70,7 +75,7 @@ export const FileBrowser: React.FC<{
     showColumns = undefined,
 }) => {
     const { t } = useTranslation();
-    const { playAudio } = useAudioContext();
+    const { playAudio, playPlaybackItem } = useAudioContext();
     const { token } = useToken();
 
     const navigate = useNavigate();
@@ -156,6 +161,13 @@ export const FileBrowser: React.FC<{
         filetypeFilter,
         trackUrl,
     });
+    const decodedPath = path
+        .split("/")
+        .filter(Boolean)
+        .map((segment) => decodeURIComponent(segment))
+        .join("/");
+    const isNativeCollectionDetail =
+        special === "library" && /^by\/contentHash\/[0-9a-f]{64}(?:\/|$)/.test(decodedPath);
 
     const {
         open: isCreateDirectoryModalOpen,
@@ -339,6 +351,53 @@ export const FileBrowser: React.FC<{
         setDownloading,
     });
 
+    const playNativeCollection = (record: Record) => {
+        if (!isNativeCollectionRecord(record)) return;
+        playPlaybackItem(nativeCollectionToPlaybackItem(record.nativeCollection, overlay));
+    };
+
+    const downloadNativeCollection = async (record: Record) => {
+        if (!isNativeCollectionRecord(record)) return;
+        setDownloading((current) => ({ ...current, [record.name]: true }));
+        try {
+            await downloadNativeCollectionZip(record.nativeCollection, overlay);
+        } catch (error) {
+            Modal.error({
+                title: t("fileBrowser.nativeCollection.downloadFailed"),
+                content: error instanceof Error ? error.message : String(error),
+            });
+        } finally {
+            setDownloading((current) => ({ ...current, [record.name]: false }));
+        }
+    };
+
+    const deleteNativeCollection = (record: Record) => {
+        if (!isNativeCollectionRecord(record)) return;
+        Modal.confirm({
+            title: t("fileBrowser.nativeCollection.deleteTitle"),
+            content: t("fileBrowser.nativeCollection.deleteWarning"),
+            okText: t("fileBrowser.delete"),
+            okButtonProps: { danger: true },
+            cancelText: t("common.cancel"),
+            onOk: async () => {
+                const response = await fetch(
+                    `${import.meta.env.VITE_APP_TEDDYCLOUD_API_URL}/api/library/native/delete`,
+                    {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({ contentHash: record.nativeCollection.contentHash }),
+                    },
+                );
+                if (!response.ok) {
+                    const payload = await response.json().catch(() => ({}));
+                    throw new Error(payload.error || `HTTP ${response.status}`);
+                }
+                setSelectedRowKeys((keys) => keys.filter((key) => key !== record.name));
+                setRebuildList(!rebuildList);
+            },
+        });
+    };
+
     // table selection / classes
     const rowClassName = (record: any) => {
         return selectedRowKeys.includes(record.key) ? "highlight-row" : "";
@@ -386,9 +445,12 @@ export const FileBrowser: React.FC<{
         migrateContent2Lib,
         handleEditTapClick: openEditTap,
         handleEditTafMetaDataClick,
-        showRenameDialog,
-        showMoveDialog,
-        showDeleteConfirmDialog,
+        showRenameDialog: isNativeCollectionDetail ? undefined : showRenameDialog,
+        showMoveDialog: isNativeCollectionDetail ? undefined : showMoveDialog,
+        showDeleteConfirmDialog: isNativeCollectionDetail ? undefined : showDeleteConfirmDialog,
+        playNativeCollection,
+        downloadNativeCollection,
+        deleteNativeCollection,
         buildContentUrl: special === "custom_img" ? buildContentUrl : undefined,
         onImagePreviewClick:
             special === "custom_img"
@@ -669,25 +731,29 @@ export const FileBrowser: React.FC<{
                                 ) : (
                                     <></>
                                 )}
-                                <Button
-                                    icon={<FolderAddOutlined />}
-                                    size="small"
-                                    onClick={() => openCreateDirectoryModal(path)}
-                                >
-                                    <div className="showBigDevicesOnly showMediumDevicesOnly">
-                                        {t("fileBrowser.createDirectory.createDirectory")}
-                                    </div>
-                                </Button>
-                                <Button
-                                    icon={<UploadOutlined />}
-                                    size="small"
-                                    onClick={showUploadFilesDragAndDropModal}
-                                >
-                                    <div className="showBigDevicesOnly showMediumDevicesOnly">
-                                        {t("fileBrowser.upload.showUploadFilesDragNDrop")}
-                                    </div>
-                                </Button>
-                                {special === "library" && (
+                                {!isNativeCollectionDetail && (
+                                    <>
+                                        <Button
+                                            icon={<FolderAddOutlined />}
+                                            size="small"
+                                            onClick={() => openCreateDirectoryModal(path)}
+                                        >
+                                            <div className="showBigDevicesOnly showMediumDevicesOnly">
+                                                {t("fileBrowser.createDirectory.createDirectory")}
+                                            </div>
+                                        </Button>
+                                        <Button
+                                            icon={<UploadOutlined />}
+                                            size="small"
+                                            onClick={showUploadFilesDragAndDropModal}
+                                        >
+                                            <div className="showBigDevicesOnly showMediumDevicesOnly">
+                                                {t("fileBrowser.upload.showUploadFilesDragNDrop")}
+                                            </div>
+                                        </Button>
+                                    </>
+                                )}
+                                {special === "library" && !isNativeCollectionDetail && (
                                     <Button
                                         size="small"
                                         icon={<SearchOutlined />}
@@ -696,7 +762,7 @@ export const FileBrowser: React.FC<{
                                         {t("fileBrowser.unusedTafsModal.title")}
                                     </Button>
                                 )}
-                                {special === "library" && (
+                                {special === "library" && !isNativeCollectionDetail && (
                                     <Button
                                         size="small"
                                         icon={<CodeOutlined />}
@@ -789,12 +855,20 @@ export const FileBrowser: React.FC<{
                         selectedRowKeys,
                         onChange: onSelectChange,
                         getCheckboxProps: (record: Record) => ({
-                            disabled: record.name === "..",
+                            disabled:
+                                record.name === ".." ||
+                                isNativeCollectionDetail ||
+                                isNativeCollectionRecord(record),
                         }),
                         onSelectAll: (selected: boolean, selectedRows: any[]) => {
                             const selectedKeys = selected
                                 ? selectedRows
-                                      .filter((row) => row.name !== "..")
+                                      .filter(
+                                          (row) =>
+                                              row.name !== ".." &&
+                                              !isNativeCollectionDetail &&
+                                              !isNativeCollectionRecord(row),
+                                      )
                                       .map((row) => row.name)
                                 : [];
                             setSelectedRowKeys(selectedKeys);

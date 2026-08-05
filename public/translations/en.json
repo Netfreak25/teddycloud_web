@@ -345,6 +345,14 @@
         "deleteMultiple": "Delete {{selectedRowCount}} selected rows",
         "downloadFile": "Download File",
         "downloadFileAsOgg": "Download TAF as *.ogg",
+        "nativeCollection": {
+            "deleteTitle": "Delete TB2 collection",
+            "deleteWarning": "Assignments using this collection may stop playing. If TB2 library caching is enabled, TONIES content can be imported again later.",
+            "downloadFailed": "Collection download failed",
+            "downloadZip": "Download collection as ZIP",
+            "open": "Open collection",
+            "summary": "{{count}} chapters · {{size}}"
+        },
         "encodeFiles": {
             "addFiles": "Add files",
             "cancel": "Cancel",
@@ -3265,6 +3273,7 @@
         "noPlayableContentHint": "There is no content available to play. Either it's not assigned or data is missing from the Boxine/Tonies cloud. Place the figurine on the box to fix this.",
         "selectFileModal": {
             "cancel": "Cancel",
+            "nativeCollection": "TB2 origin · Ogg/Opus · {{count}} chapters · {{hash}}",
             "ok": "OK",
             "selectFile": "Select file"
         },

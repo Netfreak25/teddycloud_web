@@ -37,6 +37,8 @@ const SelectFileFileBrowserComponent: React.FC<{
     trackUrl?: boolean;
     showDirOnly?: boolean;
     showColumns?: string[];
+    selectNativeCollections?: boolean;
+    hideNativeCollections?: boolean;
     rebuildTrigger?: number;
     active?: boolean;
     tableScrollY?: number;
@@ -56,6 +58,8 @@ const SelectFileFileBrowserComponent: React.FC<{
     trackUrl = true,
     showDirOnly = false,
     showColumns = undefined,
+    selectNativeCollections = false,
+    hideNativeCollections = false,
     rebuildTrigger,
     active = true,
     tableScrollY,
@@ -147,6 +151,7 @@ const SelectFileFileBrowserComponent: React.FC<{
                 newSelectedRowKeys = newSelectedRowKeys.filter((key) => {
                     const file = files.find((f: any) => f.name === key) as any;
                     return (
+                        (selectNativeCollections && file?.nativeCollection !== undefined) ||
                         (file && file.tafHeader !== undefined) ||
                         (file &&
                             filetypeFilter.some((ext) => file.name.toLowerCase().endsWith(ext)))
@@ -194,7 +199,11 @@ const SelectFileFileBrowserComponent: React.FC<{
     };
 
     const handleRowSelect = (record: Record) => {
-        if (record.isDir || record.name === "..") return;
+        if (
+            (record.isDir && !(selectNativeCollections && record.nativeCollection)) ||
+            record.name === ".."
+        )
+            return;
         const newSelectedKeys = selectedRowKeys.includes(record.name)
             ? selectedRowKeys.filter((key) => key !== record.name)
             : [...selectedRowKeys, record.name];
@@ -264,9 +273,16 @@ const SelectFileFileBrowserComponent: React.FC<{
             : isCompactCustomSelect && measuredCompactTableScrollY > 0
               ? measuredCompactTableScrollY
               : undefined;
+    const visibleFiles = hideNativeCollections
+        ? files.filter((record: Record) => !record.nativeCollection)
+        : files;
 
     const handleRowClick = (record: Record) => {
-        if (record.isDir || record.name === "..") return;
+        if (
+            (record.isDir && !(selectNativeCollections && record.nativeCollection)) ||
+            record.name === ".."
+        )
+            return;
         if (isSingleSelect) {
             onSelectChange([record.name]);
             return;
@@ -294,6 +310,7 @@ const SelectFileFileBrowserComponent: React.FC<{
         buildContentUrl: special === "custom_img" ? buildContentUrl : undefined,
         onImagePreviewClick: special === "custom_img" ? openImagePreview : undefined,
         onRowSelect: handleRowSelect,
+        selectNativeCollections,
         compactSelectHasVisibleSelectionColumn,
     });
 
@@ -376,7 +393,7 @@ const SelectFileFileBrowserComponent: React.FC<{
         <Table
             className={special === "custom_img" ? "select-image-table" : undefined}
             tableLayout={special === "custom_img" ? "fixed" : undefined}
-            dataSource={files}
+            dataSource={visibleFiles}
             columns={columns}
             rowKey={(record) => record.name}
             pagination={false}
@@ -389,7 +406,7 @@ const SelectFileFileBrowserComponent: React.FC<{
                     handleRowClick(record);
                 },
                 onDoubleClick: () => {
-                    if (record.isDir) {
+                    if (record.isDir && !(selectNativeCollections && record.nativeCollection)) {
                         handleDirClick(record.name);
                     } else if (isSingleSelect) {
                         onSelectChange([record.name]);
@@ -402,7 +419,10 @@ const SelectFileFileBrowserComponent: React.FC<{
                     }
                 },
                 style: {
-                    cursor: record.isDir ? "context-menu" : "pointer",
+                    cursor:
+                        record.isDir && !(selectNativeCollections && record.nativeCollection)
+                            ? "context-menu"
+                            : "pointer",
                 },
             })}
             rowClassName={rowClassName}

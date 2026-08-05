@@ -51,6 +51,9 @@ export const SelectAudioModal: React.FC<SelectAudioModalProps> = ({
     const resolveSelectedFile = (files: any[], path: string) => {
         if (!files || files.length !== 1) return null;
         const file = files[0];
+        if (!requireTafHeader && file?.nativeCollection?.source) {
+            return { path: file.nativeCollection.source };
+        }
         const normalizedPath = path === "" || path.endsWith("/") ? path : `${path}/`;
         const filePath = `lib://${normalizedPath}${file.name}`;
 
@@ -128,10 +131,11 @@ export const SelectAudioModal: React.FC<SelectAudioModalProps> = ({
         </div>
     );
 
-    const workingInitialPath =
-        initialPath && initialPath.startsWith("lib://")
-            ? initialPath.replace(/^lib:\/\//, "").replace(/[^/]+$/, "")
-            : initialPath;
+    const workingInitialPath = initialPath.startsWith("lib://by/contentHash/")
+        ? "by/contentHash/"
+        : initialPath && initialPath.startsWith("lib://")
+          ? initialPath.replace(/^lib:\/\//, "").replace(/[^/]+$/, "")
+          : initialPath;
 
     return (
         <Modal
@@ -151,6 +155,8 @@ export const SelectAudioModal: React.FC<SelectAudioModalProps> = ({
                 maxSelectedRows={1}
                 trackUrl={false}
                 filetypeFilter={allowedFileTypes}
+                selectNativeCollections={!requireTafHeader}
+                hideNativeCollections={requireTafHeader}
                 onFileSelectChange={handleFileSelectChange}
                 onFileDoubleClick={(file, path) => {
                     const resolved = resolveSelectedFile([file], path);
