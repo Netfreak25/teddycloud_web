@@ -15,7 +15,6 @@ type ChapterDrawerProps = {
     playbackEnabled: boolean;
     loadingChapter?: number;
     editable: boolean;
-    onEditExternal?: () => void;
     onClose: () => void;
     onSelectChapter: (chapter: number) => void;
     onSavePlaylist: (title: string, tracks: string[]) => Promise<boolean>;
@@ -33,7 +32,6 @@ export const ChapterDrawer = ({
     playbackEnabled,
     loadingChapter,
     editable,
-    onEditExternal,
     onClose,
     onSelectChapter,
     onSavePlaylist,
@@ -118,7 +116,7 @@ export const ChapterDrawer = ({
                         <Button
                             icon={<EditOutlined />}
                             aria-label={t("tonieboxes.live.editPlaylist")}
-                            onClick={onEditExternal ?? startEditing}
+                            onClick={startEditing}
                         >
                             {t("tonieboxes.live.editPlaylist")}
                         </Button>

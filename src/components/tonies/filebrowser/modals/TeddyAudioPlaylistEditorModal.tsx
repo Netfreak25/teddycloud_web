@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { Modal, Form, Input, Button, Select, theme, Tooltip } from "antd";
+import { Modal, Form, Input, Button, theme, Tooltip } from "antd";
 import { FolderAddOutlined, InfoCircleOutlined, PlusOutlined } from "@ant-design/icons";
 
 import { DndContext, PointerSensor, closestCenter, useSensor, useSensors } from "@dnd-kit/core";
@@ -30,7 +30,6 @@ export interface FileItem {
 export interface TAPFormValues {
     type: string;
     audio_id: number;
-    shuffle: number;
     filepath: string;
     name: string;
     files: FileItem[];
@@ -200,7 +199,6 @@ const TeddyAudioPlaylistEditor: React.FC<TeddyAudioPlaylistEditorProps> = ({
             form.setFieldsValue({
                 type: "tap",
                 audio_id: Math.floor(Date.now() / 1000),
-                shuffle: 0,
                 filepath: "",
                 name: "",
                 files: [],
@@ -237,7 +235,6 @@ const TeddyAudioPlaylistEditor: React.FC<TeddyAudioPlaylistEditorProps> = ({
                 form.setFieldsValue({
                     type: "tap",
                     audio_id: (initialValues.audio_id as any) ?? undefined,
-                    shuffle: Number(initialValues.shuffle ?? 0),
                     filepath: fp,
                     name: initialValues.name ?? "",
                     files: ensureFileUids((initialValues.files as any) ?? []),
@@ -399,27 +396,7 @@ const TeddyAudioPlaylistEditor: React.FC<TeddyAudioPlaylistEditorProps> = ({
                     computeAndSetFilepath();
 
                     await form.validateFields();
-                    const values = form.getFieldsValue() as TAPFormValues;
-                    if (isEditMode && initialValuesObj) {
-                        const comparable = (value: Partial<TAPFormValues>) =>
-                            JSON.stringify({
-                                name: (value.name ?? "").trim(),
-                                filepath: stripLibPrefix(value.filepath).trim(),
-                                shuffle: Number(value.shuffle ?? 0),
-                                files: (value.files ?? []).map((file) => ({
-                                    filepath: (file.filepath ?? "").trim(),
-                                    name: (file.name ?? "").trim(),
-                                })),
-                            });
-                        if (comparable(values) !== comparable(initialValuesObj)) {
-                            const previous = Number(initialValuesObj.audio_id ?? 0);
-                            values.audio_id = Math.max(Math.floor(Date.now() / 1000), previous + 1);
-                            form.setFieldsValue({ audio_id: values.audio_id });
-                        } else {
-                            values.audio_id = Number(initialValuesObj.audio_id ?? values.audio_id);
-                        }
-                    }
-                    onCreate(values);
+                    onCreate(form.getFieldsValue() as TAPFormValues);
                     resetForm();
                 }}
                 okButtonProps={{ disabled: isInitializing }}
@@ -472,25 +449,6 @@ const TeddyAudioPlaylistEditor: React.FC<TeddyAudioPlaylistEditorProps> = ({
                             }
                         >
                             <Input type="number" />
-                        </Form.Item>
-
-                        <Form.Item name="shuffle" label={t("tonies.tapEditor.shuffle")}>
-                            <Select
-                                options={[
-                                    {
-                                        value: 0,
-                                        label: t("tonies.tapEditor.shuffleModes.ordered"),
-                                    },
-                                    {
-                                        value: 1,
-                                        label: t("tonies.tapEditor.shuffleModes.all"),
-                                    },
-                                    {
-                                        value: 2,
-                                        label: t("tonies.tapEditor.shuffleModes.one"),
-                                    },
-                                ]}
-                            />
                         </Form.Item>
 
                         <Form.Item

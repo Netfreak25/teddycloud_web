@@ -8,15 +8,11 @@ export type TonieInfo = {
 };
 
 export type ContentPlaylist = {
-    kind: "direct_taf" | "tap";
     editable: boolean;
     chapterCount: number;
     title: string;
     tracks: string[];
     durations: number[];
-    contentVersion?: number;
-    shuffleMode?: 0 | 1 | 2;
-    editTarget?: string;
 };
 
 export type ContentPlaylistUpdate = Pick<ContentPlaylist, "title" | "tracks">;
