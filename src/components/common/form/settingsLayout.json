@@ -271,6 +271,12 @@
             "dependents": ["cloud.cacheToLibrary"]
         },
         {
+            "master": "toniebox2.cacheContentV3",
+            "labelKey": "settings.scopeSections.content",
+            "showHeading": false,
+            "dependents": ["toniebox2.cacheToLibraryV3"]
+        },
+        {
             "master": "cloud.updateOnLowerAudioId",
             "enabledWhen": false,
             "labelKey": "settings.scopeSections.content",
