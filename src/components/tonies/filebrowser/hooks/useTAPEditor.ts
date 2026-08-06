@@ -58,7 +58,9 @@ export const useTapEditor = ({ currentPath, setRebuildList }: UseTapEditorArgs) 
                         .replace(/[<>:"/\\|?*\u0000-\u001F]/g, "_")
                         .replace(/[. ]+$/g, "") || "untitled";
 
-                const fileName = `${safeName}.tap`;
+                const existingName = currentFile.split(/[\\/]/).filter(Boolean).pop();
+                const fileName =
+                    existingName && isTap(existingName) ? existingName : `${safeName}.tap`;
 
                 const json = JSON.stringify(values, null, 2);
                 const file = new File([json], fileName, { type: "application/json" });
@@ -101,7 +103,7 @@ export const useTapEditor = ({ currentPath, setRebuildList }: UseTapEditorArgs) 
                 );
             }
         },
-        [addNotification, currentPath, normalizedCurrentPath, setRebuildList, t],
+        [addNotification, currentFile, currentPath, normalizedCurrentPath, setRebuildList, t],
     );
 
     return {

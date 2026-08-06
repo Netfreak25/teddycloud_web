@@ -72,6 +72,7 @@ export const TonieboxCard: React.FC<{
 
     const runtime = tonieboxCard.runtime;
     const currentRuid = runtime?.playback.ruid;
+    const currentContentVersion = runtime?.playback.contentVersion;
     const isNowPlaying = Boolean(
         runtime?.online && runtime.playback.valid && runtime.playback.tonie,
     );
@@ -101,7 +102,7 @@ export const TonieboxCard: React.FC<{
         }
 
         let cancelled = false;
-        api.apiGetTagInfo(currentRuid, tonieboxCard.ID)
+        api.apiGetTagInfo(currentRuid, tonieboxCard.ID, currentContentVersion)
             .then((tonie) => {
                 if (cancelled) return;
                 setNowPlayingTonie(tonie);
@@ -119,7 +120,7 @@ export const TonieboxCard: React.FC<{
         };
         // setLastPlayedTonie is stable for the lifetime of this card.
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [currentRuid, tonieboxCard.ID]);
+    }, [currentContentVersion, currentRuid, tonieboxCard.ID]);
 
     useEffect(() => {
         const fetchTonieboxApiAccess = async () => {
@@ -298,7 +299,7 @@ export const TonieboxCard: React.FC<{
     const refreshNowPlayingTonie = async () => {
         if (!currentRuid || !/^[0-9a-f]{16}$/i.test(currentRuid)) return;
 
-        const tonie = await api.apiGetTagInfo(currentRuid, tonieboxCard.ID);
+        const tonie = await api.apiGetTagInfo(currentRuid, tonieboxCard.ID, currentContentVersion);
         setNowPlayingTonie(tonie);
         const playedAt = runtime?.playback.updatedAt
             ? new Date(runtime.playback.updatedAt * 1000).toLocaleString()

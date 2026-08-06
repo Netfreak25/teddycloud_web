@@ -2776,6 +2776,15 @@
             "commandFailedDetails": "La commande n'a pas pu être envoyée",
             "customContent": "Contenu personnalisé",
             "editPlaylist": "Modifier",
+            "playlistTypes": {
+                "directTaf": "Contenu personnalisé",
+                "tap": "Liste TeddyAudio"
+            },
+            "shuffleModes": {
+                "ordered": "Dans l'ordre",
+                "all": "Mélangé",
+                "one": "Sélection aléatoire"
+            },
             "headphonesConnected": "Casques connectés : {{count}}",
             "next": "Suivant",
             "pause": "Pause",
@@ -3287,6 +3296,12 @@
             "addFile": "Ajouter un fichier",
             "audioId": "ID audio",
             "audioIdTooltip": "Définit l'ID audio si le fichier est mis en cache. Définissez-le à 0 pour forcer la recréation du fichier mis en cache",
+            "shuffle": "Ordre de lecture",
+            "shuffleModes": {
+                "ordered": "Dans l'ordre",
+                "all": "Tout mélanger",
+                "one": "Sélection aléatoire"
+            },
             "cancel": "Annuler",
             "create": "Créer",
             "fileNameContentFile": "Description",

@@ -11,9 +11,9 @@ import {
 } from "@ant-design/icons";
 import { Button, Flex, Input, Modal, Table, theme, Tooltip, Typography } from "antd";
 import { Key } from "antd/es/table/interface";
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { useNavigate } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 
 import TeddyAudioPlaylistEditor from "./modals/TeddyAudioPlaylistEditorModal";
 import TonieInformationModal from "../common/modals/TonieInformationModal";
@@ -83,6 +83,7 @@ export const FileBrowser: React.FC<{
     const { token } = useToken();
 
     const navigate = useNavigate();
+    const location = useLocation();
 
     const [currentFile, setCurrentFile] = useState<string>("");
     const [selectedRowKeys, setSelectedRowKeys] = useState<React.Key[]>([]);
@@ -127,7 +128,9 @@ export const FileBrowser: React.FC<{
 
     const directoryTree = useDirectoryTree(special);
 
-    const currentPath = new URLSearchParams(location.search).get("path") || "";
+    const searchParams = new URLSearchParams(location.search);
+    const currentPath = searchParams.get("path") || "";
+    const editTap = searchParams.get("editTap");
 
     const { setTreeNodeId, rootTreeNode } = directoryTree;
 
@@ -208,6 +211,17 @@ export const FileBrowser: React.FC<{
         currentPath,
         setRebuildList,
     });
+
+    useEffect(() => {
+        if (!editTap) return;
+
+        const relativeFile = [currentPath, editTap].filter(Boolean).join("/").replace(/^\/+/, "");
+        openEditTap(relativeFile);
+
+        const nextParams = new URLSearchParams(location.search);
+        nextParams.delete("editTap");
+        navigate({ pathname: location.pathname, search: nextParams.toString() }, { replace: true });
+    }, [currentPath, editTap, location.pathname, location.search, navigate, openEditTap]);
 
     // information modal
     const showInformationModal = (record: any) => {
