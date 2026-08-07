@@ -106,6 +106,21 @@ export const useFileBrowserCore = ({
     // Prevent infinite fallback loops
     const fallbackInProgressRef = useRef(false);
 
+    // Keep browser back/forward navigation in sync with the displayed directory.
+    useEffect(() => {
+        if (mode !== "fileBrowser" || !trackUrl) return;
+
+        const rawPath = new URLSearchParams(location.search).get("path") || "";
+        const nextPath = rawPath
+            ? rawPath
+                  .split("/")
+                  .map((segment) => encodeURIComponent(segment))
+                  .join("/")
+            : "";
+
+        setPath((currentPath) => (currentPath === nextPath ? currentPath : nextPath));
+    }, [location.search, mode, trackUrl]);
+
     // If initialPathProp changes, apply it in select-mode
     const lastAppliedInitialPathRef = useRef<string>(resolvedInitialPath);
     useEffect(() => {
