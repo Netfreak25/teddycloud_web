@@ -32,12 +32,37 @@ export interface NativeCollectionChapter {
     path: string;
 }
 
+export interface TonieplayCollectionSummary {
+    source: string;
+    contentHash: string;
+    version: number;
+    contentType: string;
+    objectCount: number;
+    totalSize: number;
+    libraryEntryPath: string;
+    manifestPath: string;
+    metadata?: { [key: string]: unknown };
+    objects: TonieplayCollectionObject[];
+}
+
+export interface TonieplayCollectionObject {
+    index: number;
+    name: string;
+    type?: string;
+    filename?: string;
+    sha256: string;
+    fileSize: number;
+    contentType: string;
+    path: string;
+}
+
 export type Record = {
     date: number;
     isDir: boolean;
     name: string;
     tafHeader: RecordTafHeader;
     tonieInfo: TonieInfo;
-    entryKind?: "tb2_native_collection";
+    entryKind?: "tb2_native_collection" | "tb2_tonieplay_collection";
     nativeCollection?: NativeCollectionSummary;
+    tonieplayCollection?: TonieplayCollectionSummary;
 };

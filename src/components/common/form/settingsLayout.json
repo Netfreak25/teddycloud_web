@@ -274,7 +274,7 @@
             "master": "toniebox2.cacheContentV3",
             "labelKey": "settings.scopeSections.content",
             "showHeading": false,
-            "dependents": ["toniebox2.cacheToLibraryV3"]
+            "dependents": ["toniebox2.cacheToLibraryV3", "toniebox2.cacheTonieplayToLibraryV3"]
         },
         {
             "master": "cloud.updateOnLowerAudioId",

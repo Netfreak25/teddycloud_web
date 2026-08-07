@@ -151,7 +151,9 @@ const SelectFileFileBrowserComponent: React.FC<{
                 newSelectedRowKeys = newSelectedRowKeys.filter((key) => {
                     const file = files.find((f: any) => f.name === key) as any;
                     return (
-                        (selectNativeCollections && file?.nativeCollection !== undefined) ||
+                        (selectNativeCollections &&
+                            (file?.nativeCollection !== undefined ||
+                                file?.tonieplayCollection !== undefined)) ||
                         (file && file.tafHeader !== undefined) ||
                         (file &&
                             filetypeFilter.some((ext) => file.name.toLowerCase().endsWith(ext)))
@@ -200,7 +202,11 @@ const SelectFileFileBrowserComponent: React.FC<{
 
     const handleRowSelect = (record: Record) => {
         if (
-            (record.isDir && !(selectNativeCollections && record.nativeCollection)) ||
+            (record.isDir &&
+                !(
+                    selectNativeCollections &&
+                    (record.nativeCollection || record.tonieplayCollection)
+                )) ||
             record.name === ".."
         )
             return;
@@ -274,12 +280,16 @@ const SelectFileFileBrowserComponent: React.FC<{
               ? measuredCompactTableScrollY
               : undefined;
     const visibleFiles = hideNativeCollections
-        ? files.filter((record: Record) => !record.nativeCollection)
+        ? files.filter((record: Record) => !record.nativeCollection && !record.tonieplayCollection)
         : files;
 
     const handleRowClick = (record: Record) => {
         if (
-            (record.isDir && !(selectNativeCollections && record.nativeCollection)) ||
+            (record.isDir &&
+                !(
+                    selectNativeCollections &&
+                    (record.nativeCollection || record.tonieplayCollection)
+                )) ||
             record.name === ".."
         )
             return;
@@ -406,7 +416,13 @@ const SelectFileFileBrowserComponent: React.FC<{
                     handleRowClick(record);
                 },
                 onDoubleClick: () => {
-                    if (record.isDir && !(selectNativeCollections && record.nativeCollection)) {
+                    if (
+                        record.isDir &&
+                        !(
+                            selectNativeCollections &&
+                            (record.nativeCollection || record.tonieplayCollection)
+                        )
+                    ) {
                         handleDirClick(record.name);
                     } else if (isSingleSelect) {
                         onSelectChange([record.name]);
@@ -420,7 +436,11 @@ const SelectFileFileBrowserComponent: React.FC<{
                 },
                 style: {
                     cursor:
-                        record.isDir && !(selectNativeCollections && record.nativeCollection)
+                        record.isDir &&
+                        !(
+                            selectNativeCollections &&
+                            (record.nativeCollection || record.tonieplayCollection)
+                        )
                             ? "context-menu"
                             : "pointer",
                 },

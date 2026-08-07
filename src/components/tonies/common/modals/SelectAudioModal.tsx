@@ -28,6 +28,8 @@ interface SelectAudioModalProps {
     /** Optional title override */
     title?: string;
     zIndex?: number;
+    /** Overlay is required to hide TB2-only collections from TB1 source selection. */
+    overlay?: string;
 }
 
 export const SelectAudioModal: React.FC<SelectAudioModalProps> = ({
@@ -39,6 +41,7 @@ export const SelectAudioModal: React.FC<SelectAudioModalProps> = ({
     initialPath = "",
     title: titleProp,
     zIndex = undefined,
+    overlay = "",
 }) => {
     const { t } = useTranslation();
     const { token } = useToken();
@@ -53,6 +56,9 @@ export const SelectAudioModal: React.FC<SelectAudioModalProps> = ({
         const file = files[0];
         if (!requireTafHeader && file?.nativeCollection?.source) {
             return { path: file.nativeCollection.source };
+        }
+        if (!requireTafHeader && file?.tonieplayCollection?.source) {
+            return { path: file.tonieplayCollection.source };
         }
         const normalizedPath = path === "" || path.endsWith("/") ? path : `${path}/`;
         const filePath = `lib://${normalizedPath}${file.name}`;
@@ -152,6 +158,7 @@ export const SelectAudioModal: React.FC<SelectAudioModalProps> = ({
                 key={keySelectFileFileBrowser}
                 initialPath={workingInitialPath}
                 special="library"
+                overlay={overlay}
                 maxSelectedRows={1}
                 trackUrl={false}
                 filetypeFilter={allowedFileTypes}

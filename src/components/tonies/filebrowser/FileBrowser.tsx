@@ -49,7 +49,9 @@ import { UnusedTAFsModal } from "./modals/UnusedTAFsModal";
 import CustomJsonSnippetModal from "./modals/CustomJsonSnippetModal";
 import {
     downloadNativeCollectionZip,
+    downloadTonieplayCollectionZip,
     isNativeCollectionRecord,
+    isTonieplayCollectionRecord,
     nativeCollectionToPlaybackItem,
 } from "../../../utils/audio/nativeCollection";
 
@@ -353,11 +355,26 @@ export const FileBrowser: React.FC<{
     };
 
     const downloadNativeCollection = async (record: Record) => {
-        if (!isNativeCollectionRecord(record)) return;
+        if (!isNativeCollectionRecord(record) && !isTonieplayCollectionRecord(record)) return;
         setDownloading((current) => ({ ...current, [record.name]: true }));
         try {
-            await downloadNativeCollectionZip(record.nativeCollection, overlay);
+            if (isTonieplayCollectionRecord(record)) {
+                await new Promise<void>((resolve, reject) => {
+                    Modal.confirm({
+                        title: t("fileBrowser.tonieplayCollection.downloadTitle"),
+                        content: t("fileBrowser.tonieplayCollection.authWarning"),
+                        okText: t("fileBrowser.nativeCollection.downloadZip"),
+                        cancelText: t("common.cancel"),
+                        onOk: () => resolve(),
+                        onCancel: () => reject(new DOMException("Cancelled", "AbortError")),
+                    });
+                });
+                await downloadTonieplayCollectionZip(record.tonieplayCollection, overlay);
+            } else {
+                await downloadNativeCollectionZip(record.nativeCollection, overlay);
+            }
         } catch (error) {
+            if (error instanceof DOMException && error.name === "AbortError") return;
             Modal.error({
                 title: t("fileBrowser.nativeCollection.downloadFailed"),
                 content: error instanceof Error ? error.message : String(error),
@@ -368,10 +385,17 @@ export const FileBrowser: React.FC<{
     };
 
     const deleteNativeCollection = (record: Record) => {
-        if (!isNativeCollectionRecord(record)) return;
+        if (!isNativeCollectionRecord(record) && !isTonieplayCollectionRecord(record)) return;
+        const contentHash = isTonieplayCollectionRecord(record)
+            ? record.tonieplayCollection.contentHash
+            : record.nativeCollection.contentHash;
         Modal.confirm({
-            title: t("fileBrowser.nativeCollection.deleteTitle"),
-            content: t("fileBrowser.nativeCollection.deleteWarning"),
+            title: isTonieplayCollectionRecord(record)
+                ? t("fileBrowser.tonieplayCollection.deleteTitle")
+                : t("fileBrowser.nativeCollection.deleteTitle"),
+            content: isTonieplayCollectionRecord(record)
+                ? t("fileBrowser.tonieplayCollection.deleteWarning")
+                : t("fileBrowser.nativeCollection.deleteWarning"),
             okText: t("fileBrowser.delete"),
             okButtonProps: { danger: true },
             cancelText: t("common.cancel"),
@@ -381,7 +405,7 @@ export const FileBrowser: React.FC<{
                     {
                         method: "POST",
                         headers: { "Content-Type": "application/json" },
-                        body: JSON.stringify({ contentHash: record.nativeCollection.contentHash }),
+                        body: JSON.stringify({ contentHash }),
                     },
                 );
                 if (!response.ok) {
@@ -863,7 +887,8 @@ export const FileBrowser: React.FC<{
                             disabled:
                                 record.name === ".." ||
                                 isNativeCollectionDetail ||
-                                isNativeCollectionRecord(record),
+                                isNativeCollectionRecord(record) ||
+                                isTonieplayCollectionRecord(record),
                         }),
                         onSelectAll: (selected: boolean, selectedRows: any[]) => {
                             const selectedKeys = selected
@@ -872,7 +897,8 @@ export const FileBrowser: React.FC<{
                                           (row) =>
                                               row.name !== ".." &&
                                               !isNativeCollectionDetail &&
-                                              !isNativeCollectionRecord(row),
+                                              !isNativeCollectionRecord(row) &&
+                                              !isTonieplayCollectionRecord(row),
                                       )
                                       .map((row) => row.name)
                                 : [];

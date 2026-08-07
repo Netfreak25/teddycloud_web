@@ -617,6 +617,7 @@ export const TonieCard: React.FC<{
                 onSelect={handleFileSelected}
                 keySelectFileFileBrowser={keySelectFileFileBrowser}
                 initialPath={tempSelectedSource || selectedSource}
+                overlay={overlay}
             />
 
             <EditTonieModal

@@ -1,5 +1,9 @@
 import JSZip from "jszip";
-import { NativeCollectionSummary, Record } from "../../types/fileBrowserTypes";
+import {
+    NativeCollectionSummary,
+    Record,
+    TonieplayCollectionSummary,
+} from "../../types/fileBrowserTypes";
 import { AudioPlaybackItem } from "../../types/audioPlaybackTypes";
 
 const apiBase = () => import.meta.env.VITE_APP_TEDDYCLOUD_API_URL || "";
@@ -76,3 +80,41 @@ export const isNativeCollectionRecord = (
     record: Record,
 ): record is Record & { nativeCollection: NativeCollectionSummary } =>
     record.entryKind === "tb2_native_collection" && !!record.nativeCollection;
+
+export const downloadTonieplayCollectionZip = async (
+    collection: TonieplayCollectionSummary,
+    overlay = "",
+) => {
+    const zip = new JSZip();
+    const root = zip.folder(collection.contentHash);
+    if (!root) throw new Error("Could not create ZIP folder");
+
+    root.file("library-entry.json", await fetchLibraryFile(collection.libraryEntryPath, overlay), {
+        compression: "STORE",
+    });
+    root.file("content-meta.json", await fetchLibraryFile(collection.manifestPath, overlay), {
+        compression: "STORE",
+    });
+    const objects = root.folder("objects");
+    if (!objects) throw new Error("Could not create ZIP object folder");
+    for (const object of collection.objects) {
+        const name = object.path.split("/").pop();
+        if (!name) throw new Error(`Invalid object path: ${object.path}`);
+        objects.file(name, await fetchLibraryFile(object.path, overlay), {
+            compression: "STORE",
+        });
+    }
+
+    const blob = await zip.generateAsync({ type: "blob", compression: "STORE" });
+    const url = URL.createObjectURL(blob);
+    const anchor = document.createElement("a");
+    anchor.href = url;
+    anchor.download = `tb2-tonieplay-${collection.contentHash}.zip`;
+    anchor.click();
+    URL.revokeObjectURL(url);
+};
+
+export const isTonieplayCollectionRecord = (
+    record: Record,
+): record is Record & { tonieplayCollection: TonieplayCollectionSummary } =>
+    record.entryKind === "tb2_tonieplay_collection" && !!record.tonieplayCollection;

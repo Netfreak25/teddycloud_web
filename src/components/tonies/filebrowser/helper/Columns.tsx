@@ -234,9 +234,27 @@ export const createColumns = (options: CreateColumnsOptions): any[] => {
                 const isSelectableFile =
                     mode === "select" &&
                     onRowSelect &&
-                    (!record?.isDir || (selectNativeCollections && record?.nativeCollection)) &&
+                    (!record?.isDir ||
+                        (selectNativeCollections &&
+                            (record?.nativeCollection || record?.tonieplayCollection))) &&
                     record?.name !== "..";
-                const displayName = record?.nativeCollection ? (
+                const displayName = record?.tonieplayCollection ? (
+                    mode === "full" ? (
+                        <span title={record.tonieplayCollection.contentHash}>
+                            <span className="showSmallDevicesOnly">
+                                {record.tonieplayCollection.contentHash.slice(0, 12)}…
+                            </span>
+                            <span className="showMediumDevicesOnly showBigDevicesOnly">
+                                {record.tonieplayCollection.contentHash}
+                            </span>
+                        </span>
+                    ) : (
+                        t("tonies.selectFileModal.tonieplayCollection", {
+                            count: record.tonieplayCollection.objectCount,
+                            hash: record.tonieplayCollection.contentHash.slice(0, 12),
+                        })
+                    )
+                ) : record?.nativeCollection ? (
                     mode === "full" ? (
                         <span title={record.nativeCollection.contentHash}>
                             <span className="showSmallDevicesOnly">
@@ -299,7 +317,17 @@ export const createColumns = (options: CreateColumnsOptions): any[] => {
                     displayName
                 );
                 const nativeMetadata =
-                    record.nativeCollection && mode === "full" ? (
+                    record.tonieplayCollection && mode === "full" ? (
+                        <div style={{ marginTop: 4 }}>
+                            <Tag color="purple">TB2 / Tonieplay</Tag>
+                            <span>
+                                {t("fileBrowser.tonieplayCollection.summary", {
+                                    count: record.tonieplayCollection.objectCount,
+                                    size: humanFileSize(record.tonieplayCollection.totalSize),
+                                })}
+                            </span>
+                        </div>
+                    ) : record.nativeCollection && mode === "full" ? (
                         <div style={{ marginTop: 4 }}>
                             <Tag color="blue">TB2 / Ogg-Opus</Tag>
                             <span>
@@ -429,6 +457,13 @@ export const createColumns = (options: CreateColumnsOptions): any[] => {
                     record.nativeCollection?.chapters.some((chapter) =>
                         chapter.originalName.toLowerCase().includes(text),
                     ) ||
+                    record.tonieplayCollection?.contentHash.toLowerCase().includes(text) ||
+                    record.tonieplayCollection?.objects.some(
+                        (object) =>
+                            object.name.toLowerCase().includes(text) ||
+                            object.filename?.toLowerCase().includes(text) ||
+                            object.type?.toLowerCase().includes(text),
+                    ) ||
                     (!record.isDir &&
                         "tafHeader" in record &&
                         record.tafHeader.size &&
@@ -546,7 +581,7 @@ export const createColumns = (options: CreateColumnsOptions): any[] => {
         render: (name: string, record: any) => {
             const actions: React.ReactNode[] = [];
 
-            if (mode === "full" && record.nativeCollection) {
+            if (mode === "full" && (record.nativeCollection || record.tonieplayCollection)) {
                 return (
                     <div
                         style={{ display: "flex", alignItems: "center", flexWrap: "wrap", gap: 4 }}
@@ -558,13 +593,15 @@ export const createColumns = (options: CreateColumnsOptions): any[] => {
                                 onClick={() => handleDirClick(record.name)}
                             />
                         </Tooltip>
-                        <Tooltip title={t("fileBrowser.playFile")}>
-                            <PlayCircleOutlined
-                                key={`native-play-${record.name}`}
-                                style={{ margin: "4px 8px 4px 0", padding: 4 }}
-                                onClick={() => playNativeCollection?.(record)}
-                            />
-                        </Tooltip>
+                        {record.nativeCollection && (
+                            <Tooltip title={t("fileBrowser.playFile")}>
+                                <PlayCircleOutlined
+                                    key={`native-play-${record.name}`}
+                                    style={{ margin: "4px 8px 4px 0", padding: 4 }}
+                                    onClick={() => playNativeCollection?.(record)}
+                                />
+                            </Tooltip>
+                        )}
                         <Tooltip title={t("fileBrowser.nativeCollection.downloadZip")}>
                             <DownloadOutlined
                                 key={`native-download-${record.name}`}
