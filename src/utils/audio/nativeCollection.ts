@@ -8,11 +8,84 @@ import { AudioPlaybackItem } from "../../types/audioPlaybackTypes";
 
 const apiBase = () => import.meta.env.VITE_APP_TEDDYCLOUD_API_URL || "";
 
+const NATIVE_COLLECTION_SOURCE_PATTERN =
+    /^lib:\/\/(by\/contentHash\/([0-9a-f]{64})\/library-entry\.json)$/i;
+
 export const buildLibraryFileUrl = (path: string, overlay = "") => {
     const encodedPath = path.split("/").filter(Boolean).map(encodeURIComponent).join("/");
     const params = new URLSearchParams({ special: "library" });
     if (overlay) params.set("overlay", overlay);
     return `${apiBase()}/content/${encodedPath}?${params.toString()}`;
+};
+
+export const isNativeCollectionSource = (source: string) =>
+    NATIVE_COLLECTION_SOURCE_PATTERN.test(source);
+
+export const loadNativeCollectionFromSource = async (
+    source: string,
+    overlay = "",
+): Promise<NativeCollectionSummary> => {
+    const match = NATIVE_COLLECTION_SOURCE_PATTERN.exec(source);
+    if (!match) throw new Error(`Invalid native collection source: ${source}`);
+
+    const [, manifestPath, sourceHash] = match;
+    const response = await fetch(buildLibraryFileUrl(manifestPath, overlay));
+    if (!response.ok) throw new Error(`HTTP ${response.status}: ${manifestPath}`);
+
+    const manifest = (await response.json()) as {
+        format?: unknown;
+        contentHash?: unknown;
+        chapters?: unknown;
+    };
+    if (
+        manifest.format !== "ogg-opus" ||
+        typeof manifest.contentHash !== "string" ||
+        manifest.contentHash.toLowerCase() !== sourceHash.toLowerCase() ||
+        !Array.isArray(manifest.chapters)
+    ) {
+        throw new Error(`Invalid native collection manifest: ${manifestPath}`);
+    }
+
+    const collectionRoot = manifestPath.slice(0, manifestPath.lastIndexOf("/"));
+    const chapters = manifest.chapters.map((value, expectedIndex) => {
+        const chapter = value as {
+            index?: unknown;
+            originalName?: unknown;
+            sha256?: unknown;
+            fileSize?: unknown;
+            path?: unknown;
+        };
+        if (
+            chapter.index !== expectedIndex ||
+            typeof chapter.originalName !== "string" ||
+            typeof chapter.sha256 !== "string" ||
+            !/^[0-9a-f]{64}$/i.test(chapter.sha256) ||
+            typeof chapter.fileSize !== "number" ||
+            !Number.isInteger(chapter.fileSize) ||
+            chapter.fileSize < 0 ||
+            typeof chapter.path !== "string" ||
+            !/^chapters\/[^/]+\.opus$/i.test(chapter.path)
+        ) {
+            throw new Error(`Invalid chapter ${expectedIndex} in ${manifestPath}`);
+        }
+        return {
+            index: expectedIndex,
+            originalName: chapter.originalName,
+            sha256: chapter.sha256,
+            fileSize: chapter.fileSize,
+            path: `${collectionRoot}/${chapter.path}`,
+        };
+    });
+
+    return {
+        source,
+        contentHash: manifest.contentHash,
+        chapterCount: chapters.length,
+        format: "ogg-opus",
+        totalSize: chapters.reduce((sum, chapter) => sum + chapter.fileSize, 0),
+        manifestPath,
+        chapters,
+    };
 };
 
 export const nativeCollectionToPlaybackItem = (

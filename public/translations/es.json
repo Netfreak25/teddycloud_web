@@ -351,6 +351,7 @@
             "downloadFailed": "Error al descargar la colección",
             "downloadZip": "Descargar colección como ZIP",
             "open": "Abrir colección",
+            "playFailed": "No se pudo reproducir la colección TB2",
             "summary": "{{count}} capítulos · {{size}}"
         },
         "tonieplayCollection": {

@@ -351,6 +351,7 @@
             "downloadFailed": "Collection-Download fehlgeschlagen",
             "downloadZip": "Collection als ZIP herunterladen",
             "open": "Collection öffnen",
+            "playFailed": "TB2-Collection konnte nicht abgespielt werden",
             "summary": "{{count}} Kapitel · {{size}}"
         },
         "tonieplayCollection": {

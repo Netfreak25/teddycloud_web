@@ -32,6 +32,11 @@ import { useTooltipInfoByModel } from "./hooks/useTooltipInfoByModel";
 import { getInfoForTooltip } from "./utils/tooltipInfo";
 import { useTonieCardSaveFlow } from "./hooks/useTonieCardSaveFlow";
 import { TooltipInfo, ValidateStatus } from "./TonieCardTypes";
+import {
+    isNativeCollectionSource,
+    loadNativeCollectionFromSource,
+    nativeCollectionToPlaybackItem,
+} from "../../../utils/audio/nativeCollection";
 
 const api = new TeddyCloudApi(defaultAPIConfig());
 
@@ -72,7 +77,7 @@ export const TonieCard: React.FC<{
         closeLoadingNotification,
         toniesCloudAvailable,
     } = useTeddyCloud();
-    const { playAudio } = useAudioContext();
+    const { playAudio, playPlaybackItem } = useAudioContext();
 
     const [isCreateModelModalOpen, setIsCreateModelModalOpen] = useState(false);
     const [isEditModelModalOpen, setIsEditModelModalOpen] = useState(false);
@@ -221,7 +226,31 @@ export const TonieCard: React.FC<{
     // Handlers – playback
     // ------------------------
 
-    const handlePlayPauseClick = (url: string) => {
+    const handlePlayPauseClick = async () => {
+        if (isNativeCollectionSource(tonieCard.source || "")) {
+            try {
+                const collection = await loadNativeCollectionFromSource(tonieCard.source, overlay);
+                playPlaybackItem(
+                    nativeCollectionToPlaybackItem(collection, overlay, {
+                        title: tonieCard.sourceInfo?.series || tonieCard.tonieInfo.series,
+                        subtitle: tonieCard.sourceInfo?.episode || tonieCard.tonieInfo.episode,
+                        picture: tonieCard.sourceInfo?.picture || tonieCard.tonieInfo.picture,
+                    }),
+                );
+            } catch (error) {
+                addNotification(
+                    NotificationTypeEnum.Error,
+                    t("fileBrowser.nativeCollection.playFailed"),
+                    String(error),
+                    t("tonies.title"),
+                );
+            }
+            return;
+        }
+
+        const url = tonieCard.valid
+            ? import.meta.env.VITE_APP_TEDDYCLOUD_API_URL + tonieCard.audioUrl
+            : tonieCard.source;
         playAudio(
             url,
             showSourceInfoPicture ? tonieCard.sourceInfo : tonieCard.tonieInfo,
@@ -411,17 +440,10 @@ export const TonieCard: React.FC<{
     );
 
     const playAction =
-        tonieCard.valid || (tonieCard.source || "").startsWith("http") ? (
-            <PlayCircleOutlined
-                key="playpause"
-                onClick={() =>
-                    handlePlayPauseClick(
-                        tonieCard.valid
-                            ? import.meta.env.VITE_APP_TEDDYCLOUD_API_URL + tonieCard.audioUrl
-                            : tonieCard.source,
-                    )
-                }
-            />
+        tonieCard.valid ||
+        (tonieCard.source || "").startsWith("http") ||
+        isNativeCollectionSource(tonieCard.source || "") ? (
+            <PlayCircleOutlined key="playpause" onClick={() => void handlePlayPauseClick()} />
         ) : tonieCard.downloadTriggerUrl && tonieCard.downloadTriggerUrl.length > 0 && !readOnly ? (
             !toniesCloudAvailable ? (
                 <Tooltip title={t("tonies.connectionToBoxineNotAvailable")}>
