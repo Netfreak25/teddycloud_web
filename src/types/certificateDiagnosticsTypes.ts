@@ -31,12 +31,16 @@ export type CertificateDoctorOverlay = {
 export type CertificateDoctorFinding = {
     severity: CertificateDoctorSeverity;
     code: string;
+    scope?: string;
+    path?: string;
     message: string;
 };
 
 export type CertificateDoctorCheck = {
     id: number;
     severity: CertificateDoctorSeverity;
+    scope?: string;
+    path?: string;
     message: string;
 };
 
@@ -51,6 +55,42 @@ export type CertificateDoctorReport = {
 };
 
 const isArray = (value: unknown): value is unknown[] => Array.isArray(value);
+
+export const normalizeCertificateDoctorSeverity = (value: unknown): CertificateDoctorSeverity => {
+    switch (String(value).toLowerCase()) {
+        case "ok":
+            return "ok";
+        case "warn":
+        case "warning":
+            return "warning";
+        case "error":
+            return "error";
+        default:
+            return "info";
+    }
+};
+
+export const normalizeCertificateDoctorReport = (
+    report: CertificateDoctorReport,
+): CertificateDoctorReport => ({
+    ...report,
+    roles: report.roles.map((role) => ({
+        ...role,
+        status: normalizeCertificateDoctorSeverity(role.status),
+    })),
+    overlays: report.overlays.map((overlay) => ({
+        ...overlay,
+        status: normalizeCertificateDoctorSeverity(overlay.status),
+    })),
+    findings: report.findings.map((finding) => ({
+        ...finding,
+        severity: normalizeCertificateDoctorSeverity(finding.severity),
+    })),
+    checks: report.checks.map((check) => ({
+        ...check,
+        severity: normalizeCertificateDoctorSeverity(check.severity),
+    })),
+});
 
 export const isCertificateDoctorReport = (value: unknown): value is CertificateDoctorReport => {
     if (!value || typeof value !== "object") return false;
