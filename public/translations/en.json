@@ -1034,6 +1034,60 @@
         "teddycloudStatusOnline": "Teddycloud server running fine"
     },
     "settings": {
+        "diagnostics": {
+            "navigationTitle": "Diagnostics",
+            "title": "Certificate Doctor",
+            "readOnlyTitle": "Read-only diagnosis",
+            "readOnlyDescription": "No files or settings are changed.",
+            "refresh": "Run again",
+            "retry": "Retry",
+            "loading": "Checking certificates…",
+            "loadFailed": "Certificate diagnosis failed",
+            "rolesTitle": "Certificate roles",
+            "overlaysTitle": "Box overlays",
+            "findingsTitle": "Findings",
+            "detailsTitle": "Full details",
+            "noFindings": "No certificate or configuration problems found.",
+            "noOverlays": "No box overlays are configured.",
+            "summary": {
+                "roles": "Roles",
+                "ok": "OK",
+                "warnings": "Warnings",
+                "errors": "Errors"
+            },
+            "columns": {
+                "role": "Role",
+                "status": "Status",
+                "active": "Active",
+                "generation": "Generation",
+                "cn": "CN",
+                "path": "Path",
+                "box": "Box",
+                "identity": "Identity",
+                "details": "Details"
+            },
+            "status": {
+                "ok": "OK",
+                "warning": "Warning",
+                "error": "Error",
+                "info": "Info"
+            },
+            "activity": {
+                "active": "active",
+                "inactive": "inactive"
+            },
+            "identity": {
+                "shared": "Global identity",
+                "override": "Box override",
+                "unknown": "Unknown"
+            },
+            "errors": {
+                "doctorUnavailable": "The certificate doctor is not available in this installation.",
+                "requestFailed": "The certificate doctor could not be executed.",
+                "schemaUnsupported": "This certificate doctor version is not supported by the WebUI.",
+                "responseInvalid": "The certificate doctor returned an invalid response."
+            }
+        },
         "certificates": {
             "hint": "These are the certificates used for general use of the TeddyCloud. Specific ones can be used for your Tonieboxes. To change these, go to ",
             "information": "Information",

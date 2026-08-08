@@ -1,0 +1,35 @@
+import React from "react";
+import { useTranslation } from "react-i18next";
+import { Link } from "react-router-dom";
+
+import BreadcrumbWrapper, {
+    StyledContent,
+    StyledLayout,
+    StyledSider,
+} from "../../components/common/StyledComponents";
+import { SettingsSubNav } from "../../components/settings/SettingsSubNav";
+import { CertificateDoctor } from "../../components/settings/diagnostics/CertificateDoctor";
+
+export const DiagnosticsPage: React.FC = () => {
+    const { t } = useTranslation();
+
+    return (
+        <>
+            <StyledSider>
+                <SettingsSubNav />
+            </StyledSider>
+            <StyledLayout>
+                <BreadcrumbWrapper
+                    items={[
+                        { title: <Link to="/">{t("home.navigationTitle")}</Link> },
+                        { title: <Link to="/settings">{t("settings.navigationTitle")}</Link> },
+                        { title: t("settings.diagnostics.navigationTitle") },
+                    ]}
+                />
+                <StyledContent>
+                    <CertificateDoctor />
+                </StyledContent>
+            </StyledLayout>
+        </>
+    );
+};

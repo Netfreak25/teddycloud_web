@@ -4,6 +4,7 @@ import { Link, useLocation } from "react-router-dom";
 import { MenuProps } from "antd";
 import {
     SafetyCertificateOutlined,
+    AuditOutlined,
     SettingOutlined,
     PoweroffOutlined,
     FileSearchOutlined,
@@ -237,6 +238,22 @@ export const SettingsSubNav = () => {
             ),
             icon: React.createElement(FileSearchOutlined),
             title: t("settings.rtnl.navigationTitle"),
+        },
+        {
+            key: "diagnostics",
+            label: (
+                <Link
+                    to="/settings/diagnostics"
+                    onClick={() => {
+                        setNavOpen(false);
+                        setSubNavOpen(false);
+                    }}
+                >
+                    {t("settings.diagnostics.navigationTitle")}
+                </Link>
+            ),
+            icon: React.createElement(AuditOutlined),
+            title: t("settings.diagnostics.navigationTitle"),
         },
         {
             key: "notifications",

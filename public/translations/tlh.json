@@ -95,6 +95,60 @@
         }
     },
     "settings": {
+        "diagnostics": {
+            "navigationTitle": "Qagh nej",
+            "title": "Certificate Doctor",
+            "readOnlyTitle": "poj neH",
+            "readOnlyDescription": "ta'mey DuHmey je choHbe'.",
+            "refresh": "wa'logh yIpojqa'",
+            "retry": "yInIDqa'",
+            "loading": "certificates pojlI'…",
+            "loadFailed": "certificates pojmeH Qagh",
+            "rolesTitle": "certificate Qu'mey",
+            "overlaysTitle": "Toniebox overlays",
+            "findingsTitle": "Qaghmey tu'lu'bogh",
+            "detailsTitle": "De' Hoch",
+            "noFindings": "certificate Qagh configuration Qagh ghap tu'lu'be'.",
+            "noOverlays": "Toniebox overlay tu'lu'be'.",
+            "summary": {
+                "roles": "Qu'mey",
+                "ok": "Qap",
+                "warnings": "yIqIm",
+                "errors": "Qaghmey"
+            },
+            "columns": {
+                "role": "Qu'",
+                "status": "Dotlh",
+                "active": "chu'",
+                "generation": "Segh",
+                "cn": "CN",
+                "path": "He",
+                "box": "Toniebox",
+                "identity": "NID",
+                "details": "De'"
+            },
+            "status": {
+                "ok": "Qap",
+                "warning": "yIqIm",
+                "error": "Qagh",
+                "info": "De'"
+            },
+            "activity": {
+                "active": "chu'",
+                "inactive": "Qotlh"
+            },
+            "identity": {
+                "shared": "Hoch NID",
+                "override": "Toniebox NID",
+                "unknown": "Sovbe'"
+            },
+            "errors": {
+                "doctorUnavailable": "Certificate Doctor tu'lu'be'.",
+                "requestFailed": "Certificate Doctor chu'laHbe'.",
+                "schemaUnsupported": "Certificate Doctor Seghvam Qutlhbe' WebUI.",
+                "responseInvalid": "Certificate Doctor jangHa'."
+            }
+        },
         "certificates": {
             "information": "De'",
             "navigationTitle": "Certificates",

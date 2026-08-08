@@ -31,6 +31,7 @@ import { NotificationsListPage } from "./pages/settings/NotificationsListPage";
 import { RtnlPage } from "./pages/settings/RtnlPage";
 import { SettingsPage } from "./pages/settings/SettingsPage";
 import { CertificatesPage } from "./pages/settings/certificates/CertificatesPage";
+import { DiagnosticsPage } from "./pages/settings/DiagnosticsPage";
 
 import { TonieboxesPage } from "./pages/tonieboxes/TonieboxesPage";
 import { BoxSetupPage } from "./pages/tonieboxes/boxsetup/BoxSetupPage";
@@ -283,6 +284,10 @@ function App() {
                                             <Route
                                                 path="/settings/certificates"
                                                 element={<CertificatesPage />}
+                                            />
+                                            <Route
+                                                path="/settings/diagnostics"
+                                                element={<DiagnosticsPage />}
                                             />
                                             <Route path="/settings/rtnl" element={<RtnlPage />} />
                                             <Route

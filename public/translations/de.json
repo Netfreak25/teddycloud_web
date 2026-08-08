@@ -1034,6 +1034,60 @@
         "teddycloudStatusOnline": "TeddyCloud Server online"
     },
     "settings": {
+        "diagnostics": {
+            "navigationTitle": "Diagnose",
+            "title": "Zertifikats-Doctor",
+            "readOnlyTitle": "Nur Diagnose",
+            "readOnlyDescription": "Es werden keine Dateien oder Einstellungen verändert.",
+            "refresh": "Erneut prüfen",
+            "retry": "Erneut versuchen",
+            "loading": "Zertifikate werden geprüft…",
+            "loadFailed": "Zertifikatsdiagnose fehlgeschlagen",
+            "rolesTitle": "Zertifikatsrollen",
+            "overlaysTitle": "Box-Overlays",
+            "findingsTitle": "Auffälligkeiten",
+            "detailsTitle": "Vollständige Details",
+            "noFindings": "Keine Zertifikats- oder Konfigurationsprobleme gefunden.",
+            "noOverlays": "Es sind keine Box-Overlays konfiguriert.",
+            "summary": {
+                "roles": "Rollen",
+                "ok": "OK",
+                "warnings": "Warnungen",
+                "errors": "Fehler"
+            },
+            "columns": {
+                "role": "Rolle",
+                "status": "Status",
+                "active": "Aktiv",
+                "generation": "Generation",
+                "cn": "CN",
+                "path": "Pfad",
+                "box": "Box",
+                "identity": "Identität",
+                "details": "Details"
+            },
+            "status": {
+                "ok": "OK",
+                "warning": "Warnung",
+                "error": "Fehler",
+                "info": "Info"
+            },
+            "activity": {
+                "active": "aktiv",
+                "inactive": "inaktiv"
+            },
+            "identity": {
+                "shared": "Globale Identität",
+                "override": "Box-Override",
+                "unknown": "Unbekannt"
+            },
+            "errors": {
+                "doctorUnavailable": "Der Zertifikats-Doctor ist in dieser Installation nicht verfügbar.",
+                "requestFailed": "Der Zertifikats-Doctor konnte nicht ausgeführt werden.",
+                "schemaUnsupported": "Diese Version des Zertifikats-Doctors wird von der WebUI nicht unterstützt.",
+                "responseInvalid": "Der Zertifikats-Doctor hat eine ungültige Antwort geliefert."
+            }
+        },
         "certificates": {
             "hint": "Diese sind die Zertifikate, die für die allgemeine Nutzung von der TeddyCloud genutzt werden. Für deine Tonieboxen können spezifische genutzt werden. Um diese zu ändern, gehe zu ",
             "information": "Information",

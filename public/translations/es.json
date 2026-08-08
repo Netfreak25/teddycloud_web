@@ -1034,6 +1034,60 @@
         "teddycloudStatusOnline": "Servidor de Teddycloud funcionando correctamente"
     },
     "settings": {
+        "diagnostics": {
+            "navigationTitle": "Diagnóstico",
+            "title": "Diagnóstico de certificados",
+            "readOnlyTitle": "Diagnóstico de solo lectura",
+            "readOnlyDescription": "No se modifica ningún archivo ni ajuste.",
+            "refresh": "Comprobar de nuevo",
+            "retry": "Reintentar",
+            "loading": "Comprobando certificados…",
+            "loadFailed": "Error en el diagnóstico de certificados",
+            "rolesTitle": "Funciones de certificados",
+            "overlaysTitle": "Configuraciones de cajas",
+            "findingsTitle": "Incidencias",
+            "detailsTitle": "Detalles completos",
+            "noFindings": "No se encontraron problemas de certificados o configuración.",
+            "noOverlays": "No hay configuraciones específicas de cajas.",
+            "summary": {
+                "roles": "Funciones",
+                "ok": "OK",
+                "warnings": "Advertencias",
+                "errors": "Errores"
+            },
+            "columns": {
+                "role": "Función",
+                "status": "Estado",
+                "active": "Activo",
+                "generation": "Generación",
+                "cn": "CN",
+                "path": "Ruta",
+                "box": "Caja",
+                "identity": "Identidad",
+                "details": "Detalles"
+            },
+            "status": {
+                "ok": "OK",
+                "warning": "Advertencia",
+                "error": "Error",
+                "info": "Info"
+            },
+            "activity": {
+                "active": "activo",
+                "inactive": "inactivo"
+            },
+            "identity": {
+                "shared": "Identidad global",
+                "override": "Identidad de la caja",
+                "unknown": "Desconocida"
+            },
+            "errors": {
+                "doctorUnavailable": "El diagnóstico de certificados no está disponible en esta instalación.",
+                "requestFailed": "No se pudo ejecutar el diagnóstico de certificados.",
+                "schemaUnsupported": "La WebUI no admite esta versión del diagnóstico.",
+                "responseInvalid": "El diagnóstico de certificados devolvió una respuesta no válida."
+            }
+        },
         "certificates": {
             "hint": "Estos son los certificados utilizados para el uso general de TeddyCloud. Se pueden usar certificados específicos para tus Tonieboxes. Para cambiarlos, ve a ",
             "information": "Información",
