@@ -312,7 +312,23 @@ export const createColumns = (options: CreateColumnsOptions): any[] => {
                         {displayName}
                     </span>
                 ) : record?.isDir ? (
-                    <>{displayName}</>
+                    <span
+                        role="button"
+                        tabIndex={0}
+                        style={{ cursor: "pointer" }}
+                        onClick={(event) => {
+                            event.stopPropagation();
+                            handleDirClick(record.name);
+                        }}
+                        onKeyDown={(event) => {
+                            if (event.key === "Enter" || event.key === " ") {
+                                event.preventDefault();
+                                handleDirClick(record.name);
+                            }
+                        }}
+                    >
+                        {displayName}
+                    </span>
                 ) : (
                     displayName
                 );
