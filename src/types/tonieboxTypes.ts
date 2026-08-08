@@ -3,6 +3,7 @@ export type TonieboxImage = {
     name: string;
     img_src: string;
     crop?: number[];
+    generation?: "tb1" | "tb2";
 };
 
 export type TonieboxPlaybackStatus = "unknown" | "playing" | "paused" | "stopped";

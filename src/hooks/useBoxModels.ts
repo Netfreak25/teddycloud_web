@@ -36,12 +36,24 @@ export function useBoxModelImages() {
 
             if (!isMounted) return;
 
-            const images: TonieboxImage[] = result.map((item: any) => ({
-                id: item.id,
-                name: item.name,
-                img_src: item.img_src,
-                crop: item.crop || null,
-            }));
+            const images: TonieboxImage[] = result.map((item: any) => {
+                const generation =
+                    item.generation === "tb1" || item.generation === "tb2"
+                        ? item.generation
+                        : item.name?.startsWith("TB2 - ")
+                          ? "tb2"
+                          : item.name?.startsWith("TB1 - ")
+                            ? "tb1"
+                            : undefined;
+
+                return {
+                    id: item.id,
+                    name: item.name,
+                    img_src: item.img_src,
+                    crop: item.crop || null,
+                    generation,
+                };
+            });
 
             setBoxModelImages(images);
             setLoading(false);

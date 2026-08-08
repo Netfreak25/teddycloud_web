@@ -13,7 +13,7 @@ import {
 } from "@ant-design/icons";
 
 import { defaultAPIConfig } from "../../../config/defaultApiConfig";
-import { OptionsItem, OptionsList, TeddyCloudApi } from "../../../api";
+import { TeddyCloudApi } from "../../../api";
 
 import { TonieCardProps } from "../../../types/tonieTypes";
 import { BoxVersionsEnum, TonieboxCardProps, TonieboxImage } from "../../../types/tonieboxTypes";
@@ -56,7 +56,6 @@ export const TonieboxCard: React.FC<{
     const [lastIp, setLastIp] = useState<string>("");
     const [cfwInstalled, setCFWInstalled] = useState<boolean>(false);
     const [lastPlayedTonieName, setLastPlayedTonieName] = useState<React.ReactNode>(null);
-    const [options, setOptions] = useState<OptionsList | undefined>();
     const [isEditSettingsModalOpen, setIsEditSettingsModalOpen] = useState(false);
     const [isUploadCertificatesModalOpen, setIsUploadCertificatesModalOpen] = useState(false);
     const [isModelModalOpen, setIsModelModalOpen] = useState(false);
@@ -309,59 +308,6 @@ export const TonieboxCard: React.FC<{
 
     // certificates
     const handleUploadCertificatesClick = () => {
-        const fetchOptions = async () => {
-            const optionsRequest = (await api.apiGetIndexGet(tonieboxCard.ID)) as OptionsList;
-
-            if (!optionsRequest?.options || optionsRequest.options.length === 0) {
-                return;
-            }
-
-            const certIndex = optionsRequest.options.findIndex(
-                (option) => option.iD === "core.certdir",
-            );
-
-            let updatedOptions = optionsRequest.options;
-            // in case of set basic or default level, core.certdir is not fetched, so we need to fetch the value directly
-            // overlayed is not possible to fetch in that way, so we decide on compare default and overlayed value if its overlayed
-            if (certIndex === -1) {
-                try {
-                    let response = await api.apiGetTeddyCloudSettingRaw("core.certdir");
-                    let defaultCoreCertDir = "";
-                    if (response) {
-                        defaultCoreCertDir = await response.text();
-                    }
-
-                    response = await api.apiGetTeddyCloudSettingRaw(
-                        "core.certdir",
-                        tonieboxCard.ID,
-                    );
-                    if (response) {
-                        const coreCertDir = await response.text();
-
-                        const newItem: OptionsItem = {
-                            iD: "core.certdir",
-                            shortname: "core.certdir",
-                            label: "Cert dir",
-                            description: "Directory to upload genuine client certificates",
-                            type: "string",
-                            value: coreCertDir,
-                            overlayed: coreCertDir !== defaultCoreCertDir,
-                        };
-
-                        updatedOptions = [...updatedOptions, newItem];
-                    }
-                } catch (e) {
-                    console.error("Failed to fetch core.certdir", e);
-                }
-            }
-
-            setOptions({
-                ...optionsRequest,
-                options: updatedOptions,
-            });
-        };
-
-        void fetchOptions();
         setIsUploadCertificatesModalOpen(true);
     };
     const handleUploadCertificatesOk = async () => {
@@ -821,7 +767,9 @@ export const TonieboxCard: React.FC<{
                 open={isUploadCertificatesModalOpen}
                 tonieboxName={tonieboxCard.boxName}
                 overlayId={tonieboxCard.ID}
-                options={options}
+                recommendedGeneration={
+                    tonieboxImages.find((image) => image.id === activeModel)?.generation
+                }
                 onOk={handleUploadCertificatesOk}
                 onCancel={handleUploadCertificatesCancel}
             />

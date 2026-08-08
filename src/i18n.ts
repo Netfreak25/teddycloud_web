@@ -3,7 +3,7 @@ import Backend from "i18next-http-backend";
 import LanguageDetector from "i18next-browser-languagedetector";
 import { initReactI18next } from "react-i18next";
 
-const cacheBuster = "202608060002";
+const cacheBuster = "202608080001";
 
 i18n.use(Backend)
     .use(LanguageDetector)

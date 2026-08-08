@@ -1,10 +1,11 @@
+import { useEffect, useRef } from "react";
 import { useTranslation } from "react-i18next";
-import { Upload, UploadFile } from "antd";
+import { Modal, Upload, UploadFile } from "antd";
 import type { UploadProps } from "antd";
 
 import { InboxOutlined } from "@ant-design/icons";
 
-import { ApiUploadCertPostRequest, TeddyCloudApi } from "../../../api";
+import { ApiUploadCertPostRequest, ResponseError, TeddyCloudApi } from "../../../api";
 import { defaultAPIConfig } from "../../../config/defaultApiConfig";
 import { useTeddyCloud } from "../../../provider/TeddyCloudProvider";
 import { NotificationTypeEnum } from "../../../types/teddyCloudNotificationTypes";
@@ -14,6 +15,8 @@ const api = new TeddyCloudApi(defaultAPIConfig());
 interface CertificateDragNDropProps {
     overlay?: string;
     generation?: "tb1" | "tb2";
+    disabled?: boolean;
+    confirmationScope?: string;
 }
 
 type CustomRequestOptions = Parameters<NonNullable<UploadProps["customRequest"]>>[0];
@@ -21,9 +24,18 @@ type CustomRequestOptions = Parameters<NonNullable<UploadProps["customRequest"]>
 export const CertificateDragNDrop: React.FC<CertificateDragNDropProps> = ({
     overlay,
     generation,
+    disabled = false,
+    confirmationScope,
 }) => {
     const { t } = useTranslation();
     const { addNotification, setFetchCloudStatus } = useTeddyCloud();
+    const overwriteApproved = useRef(false);
+    const overwriteConfirmation = useRef<Promise<boolean> | null>(null);
+
+    useEffect(() => {
+        overwriteApproved.current = false;
+        overwriteConfirmation.current = null;
+    }, [confirmationScope, generation]);
 
     const navigationTitle = overlay
         ? t("tonieboxes.navigationTitle")
@@ -42,7 +54,27 @@ export const CertificateDragNDrop: React.FC<CertificateDragNDropProps> = ({
         }
     };
 
-    const handleUpload = async (file: UploadFile<unknown>) => {
+    const confirmOverwrite = () => {
+        if (overwriteConfirmation.current === null) {
+            overwriteConfirmation.current = new Promise<boolean>((resolve) => {
+                Modal.confirm({
+                    title: t("settings.certificates.overwriteTitle"),
+                    content: t("settings.certificates.overwriteDescription"),
+                    okText: t("settings.certificates.overwriteConfirm"),
+                    cancelText: t("settings.certificates.overwriteCancel"),
+                    onOk: () => resolve(true),
+                    onCancel: () => resolve(false),
+                });
+            });
+        }
+        return overwriteConfirmation.current;
+    };
+
+    const upload = async (payload: ApiUploadCertPostRequest, overwrite: boolean) => {
+        await api.apiUploadCertPost(payload, overlay, generation, overwrite);
+    };
+
+    const handleUpload = async (file: UploadFile<unknown>): Promise<boolean> => {
         const blob = file as unknown as Blob;
 
         const payload: ApiUploadCertPostRequest = {
@@ -50,7 +82,20 @@ export const CertificateDragNDrop: React.FC<CertificateDragNDropProps> = ({
         };
 
         try {
-            await api.apiUploadCertPost(payload, overlay, generation);
+            try {
+                await upload(payload, overwriteApproved.current);
+            } catch (error) {
+                if (!(error instanceof ResponseError) || error.response.status !== 409) {
+                    throw error;
+                }
+
+                const approved = await confirmOverwrite();
+                if (!approved) {
+                    return false;
+                }
+                overwriteApproved.current = true;
+                await upload(payload, true);
+            }
             await triggerWriteConfig();
 
             addNotification(
@@ -62,6 +107,7 @@ export const CertificateDragNDrop: React.FC<CertificateDragNDropProps> = ({
                 navigationTitle,
             );
             setFetchCloudStatus((prev) => !prev);
+            return true;
         } catch (err) {
             addNotification(
                 NotificationTypeEnum.Error,
@@ -99,12 +145,17 @@ export const CertificateDragNDrop: React.FC<CertificateDragNDropProps> = ({
         customRequest: async (options: CustomRequestOptions) => {
             const { onSuccess, onError, file } = options;
             try {
-                await handleUpload(file as UploadFile<unknown>);
-                onSuccess && onSuccess("OK");
+                const uploaded = await handleUpload(file as UploadFile<unknown>);
+                if (uploaded) {
+                    onSuccess && onSuccess("OK");
+                } else {
+                    onError && onError(new Error("Certificate overwrite cancelled"));
+                }
             } catch (error) {
                 onError && onError(error as Error);
             }
         },
+        disabled,
     };
 
     return (
