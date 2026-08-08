@@ -76,19 +76,6 @@ export default class SettingsDataHandler {
                 setting.overlayed !== undefined ? setting.overlayed : undefined;
             setting.overlayId = overlayId;
         });
-        const upstreamEnabled = data.find(
-            (setting) => setting.iD === "mqtt_client_upstream.enabled",
-        );
-        const passthrough = data.find(
-            (setting) => setting.iD === "mqtt_client_upstream.passthrough_enabled",
-        );
-        if (upstreamEnabled && passthrough) {
-            passthrough.readOnly = upstreamEnabled.value !== true;
-            if (upstreamEnabled.value !== true) {
-                passthrough.value = false;
-                passthrough.initialValue = false;
-            }
-        }
         this.settings = data;
     }
 
@@ -216,7 +203,6 @@ export default class SettingsDataHandler {
                         "cloud.remote_hostname_tb2",
                         "cloud.remote_port_tb2",
                         "mqtt_client_upstream.enabled",
-                        "mqtt_client_upstream.passthrough_enabled",
                         "mqtt_client_upstream.local_control_enabled",
                         "mqtt_client_upstream.hostname",
                         "mqtt_client_upstream.port",
@@ -273,17 +259,6 @@ export default class SettingsDataHandler {
         if (settingToChange) {
             if (typeof settingToChange.initialValue === typeof newValue) {
                 settingToChange.value = newValue;
-                if (iD === "mqtt_client_upstream.enabled") {
-                    const passthrough = this.settings.find(
-                        (setting) => setting.iD === "mqtt_client_upstream.passthrough_enabled",
-                    );
-                    if (passthrough) {
-                        passthrough.readOnly = newValue !== true;
-                        if (newValue !== true) {
-                            passthrough.value = false;
-                        }
-                    }
-                }
                 if (TB2_HTTPS_MODE_SETTINGS.includes(iD) && newValue === true) {
                     const otherMode = this.settings.find(
                         (setting) =>

@@ -288,10 +288,7 @@
             "labelKey": "settings.scopeSections.localIciControl",
             "showHeading": false,
             "dependentPrefixes": ["toniebox2."],
-            "appliesWhen": [
-                { "setting": "mqtt_client_upstream.enabled", "value": true },
-                { "setting": "mqtt_client_upstream.passthrough_enabled", "value": true }
-            ]
+            "appliesWhen": [{ "setting": "mqtt_client_upstream.enabled", "value": true }]
         }
     ]
 }

@@ -27,7 +27,7 @@ type Tb2HttpsState =
     | "success"
     | "error";
 type Tb2HttpsMode = "disabled" | "v3" | "transparent" | "mixed";
-type MqttUpstreamState = "disabled" | "standby" | "armed" | "connecting" | "tunneling" | "error";
+type MqttUpstreamState = "disabled" | "ready" | "connecting" | "connected" | "error";
 
 interface Tb2HttpsStatus {
     enabled: boolean;
@@ -101,7 +101,6 @@ const defaultTb2HttpsStatus: Tb2HttpsStatus = {
 
 interface MqttUpstreamStatus {
     enabled: boolean;
-    passthrough_enabled: boolean;
     state: MqttUpstreamState;
     hostname: string;
     port: number;
@@ -114,7 +113,6 @@ interface MqttUpstreamStatus {
 
 const defaultMqttUpstreamStatus: MqttUpstreamStatus = {
     enabled: false,
-    passthrough_enabled: false,
     state: "disabled",
     hostname: "ici.tonie.cloud",
     port: 8883,
@@ -283,18 +281,18 @@ export const ServerStatus = () => {
         );
 
     const mqttUpstreamBgColor =
-        mqttUpstreamStatus.state === "tunneling"
+        mqttUpstreamStatus.state === "connected"
             ? "#87d068"
             : mqttUpstreamStatus.state === "error"
               ? "#f50"
               : "#faad14";
 
     const mqttUpstreamIcon =
-        mqttUpstreamStatus.state === "tunneling" ? (
+        mqttUpstreamStatus.state === "connected" ? (
             <CheckCircleOutlined />
         ) : mqttUpstreamStatus.state === "error" ? (
             <CloseCircleOutlined />
-        ) : mqttUpstreamStatus.state === "connecting" || mqttUpstreamStatus.state === "armed" ? (
+        ) : mqttUpstreamStatus.state === "connecting" || mqttUpstreamStatus.state === "ready" ? (
             <LoadingOutlined spin={mqttUpstreamStatus.state === "connecting"} />
         ) : (
             <LockOutlined />
