@@ -1424,15 +1424,11 @@
             },
             "cloud__tb2_enabled": {
                 "label": "Transparenter TB2 HTTPS-Proxy aktivieren",
-                "description": "Leite entschlüsselten TB2-HTTPS-Verkehr unverändert an den Upstream-Server weiter"
+                "description": "Leite entschlüsselten TB2-HTTPS-Verkehr unverändert weiter und zeichne ihn vollständig auf"
             },
             "cloud__tb2_v3_enabled": {
                 "label": "TB2 v3 Cloud-Pfad aktivieren",
                 "description": "Unterstützte TB2 v3 HTTPS-Endpunkte verarbeiten und weiterleiten"
-            },
-            "cloud__tb2_capture_enabled": {
-                "label": "Transparenten TB2-HTTPS-Verkehr erfassen",
-                "description": "Den vollständigen, unmaskierten Verkehr des transparenten TB2-HTTPS-Proxys aufzeichnen"
             },
             "cloud__remote_hostname": {
                 "label": "Cloud-Hostname",

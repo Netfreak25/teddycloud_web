@@ -1424,15 +1424,11 @@
             },
             "cloud__tb2_enabled": {
                 "label": "Habilitar proxy HTTPS TB2 transparente",
-                "description": "Reenviar el tráfico HTTPS TB2 descifrado sin cambios al servidor ascendente"
+                "description": "Reenviar el tráfico HTTPS TB2 descifrado sin cambios y capturarlo por completo"
             },
             "cloud__tb2_v3_enabled": {
                 "label": "Habilitar ruta cloud v3 de TB2",
                 "description": "Manejar y reenviar los endpoints HTTPS TB2 v3 compatibles"
-            },
-            "cloud__tb2_capture_enabled": {
-                "label": "Capturar tráfico HTTPS transparente TB2",
-                "description": "Escribir la captura completa de tráfico HTTPS transparente TB2 sin redactar"
             },
             "cloud__remote_hostname": {
                 "label": "Nombre de host de la nube",

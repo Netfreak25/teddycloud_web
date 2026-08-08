@@ -1424,15 +1424,11 @@
             },
             "cloud__tb2_enabled": {
                 "label": "Enable transparent TB2 HTTPS proxy",
-                "description": "Forward decrypted TB2 HTTPS traffic unchanged to the upstream server"
+                "description": "Forward decrypted TB2 HTTPS traffic unchanged and capture it completely"
             },
             "cloud__tb2_v3_enabled": {
                 "label": "Enable TB2 v3 cloud path",
                 "description": "Handle and forward supported TB2 v3 HTTPS endpoints"
-            },
-            "cloud__tb2_capture_enabled": {
-                "label": "Capture transparent TB2 HTTPS traffic",
-                "description": "Write the complete unredacted transparent TB2 HTTPS traffic capture"
             },
             "cloud__remote_hostname": {
                 "label": "Cloud hostname",

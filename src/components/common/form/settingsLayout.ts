@@ -18,6 +18,7 @@ type SettingDependency = {
     dependents?: string[];
     dependentPrefixes?: string[];
     enabledWhen?: boolean;
+    hideWhenDisabled?: boolean;
     showHeading?: boolean;
     appliesWhen?: Array<{ setting: string; value: boolean }>;
 };

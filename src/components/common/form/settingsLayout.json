@@ -186,30 +186,28 @@
             "scope": "tb2",
             "labelKey": "settings.scopeSections.httpsCloud",
             "ids": [
-                "cloud.tb2_enabled",
-                "cloud.tb2_capture_enabled",
-                "cloud.tb2_capture_dir",
-                "cloud.tb2_capture_max_mib",
                 "cloud.tb2_v3_enabled",
                 "cloud.enableV3FreshnessCheck",
                 "cloud.enableV3Ota",
                 "cloud.enableV3SetupStatus",
                 "cloud.enableV3ContentMeta",
                 "cloud.enableV3Chapter",
+                "cloud.tb2_enabled",
+                "cloud.tb2_capture_dir",
+                "cloud.tb2_capture_max_mib",
                 "cloud.remote_hostname_tb2",
                 "cloud.remote_port_tb2"
             ],
             "order": [
-                "cloud.tb2_enabled",
-                "cloud.tb2_capture_enabled",
-                "cloud.tb2_capture_dir",
-                "cloud.tb2_capture_max_mib",
                 "cloud.tb2_v3_enabled",
                 "cloud.enableV3FreshnessCheck",
                 "cloud.enableV3Ota",
                 "cloud.enableV3SetupStatus",
                 "cloud.enableV3ContentMeta",
                 "cloud.enableV3Chapter",
+                "cloud.tb2_enabled",
+                "cloud.tb2_capture_dir",
+                "cloud.tb2_capture_max_mib",
                 "cloud.remote_hostname_tb2",
                 "cloud.remote_port_tb2"
             ]
@@ -256,6 +254,7 @@
         {
             "master": "cloud.tb2_v3_enabled",
             "labelKey": "settings.scopeSections.v3Endpoints",
+            "hideWhenDisabled": true,
             "dependents": [
                 "cloud.enableV3FreshnessCheck",
                 "cloud.enableV3Ota",

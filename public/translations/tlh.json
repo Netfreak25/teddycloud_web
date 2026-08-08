@@ -190,9 +190,6 @@
             "cloud__tb2_v3_enabled": {
                 "label": "TB2 v3 He QotlhHa'"
             },
-            "cloud__tb2_capture_enabled": {
-                "label": "TB2 HTTPS jabbI'ID pol"
-            },
             "mqtt_client_upstream__enabled": {
                 "label": "ICI MQTT He QotlhHa'"
             },
