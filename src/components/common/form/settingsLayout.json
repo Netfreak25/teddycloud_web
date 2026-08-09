@@ -14,6 +14,7 @@
                 "core.server.http_port",
                 "core.server.https_web_port",
                 "core.server.https_api_port",
+                "core.server.sni_cert_selection_enabled",
                 "core.server.bind_ip",
                 "core.host_url",
                 "core.server.http_client_timeout",
