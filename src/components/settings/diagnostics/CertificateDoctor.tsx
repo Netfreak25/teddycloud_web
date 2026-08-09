@@ -66,7 +66,6 @@ type DiagnosticEntry = {
 type DiagnosticGroup = {
     key: string;
     scope: string;
-    path: string;
     severity: CertificateDoctorSeverity;
     entries: DiagnosticEntry[];
     counts: Record<CertificateDoctorSeverity, number>;
@@ -103,19 +102,17 @@ const groupChecks = (
             severity: normalizeCertificateDoctorSeverity(check.severity),
         };
         const scope = entryScope(entry);
-        const path = entryPath(entry) || pathByScope.get(scope) || "";
-        const key = `${scope}\u0000${path}`;
-        let group = groups.get(key);
+        entry.path = entryPath(entry) || pathByScope.get(scope) || "";
+        let group = groups.get(scope);
         if (!group) {
             group = {
-                key,
+                key: scope,
                 scope,
-                path,
                 severity: "info",
                 entries: [],
                 counts: { ok: 0, warning: 0, error: 0, info: 0 },
             };
-            groups.set(key, group);
+            groups.set(scope, group);
         }
         group.entries.push(entry);
         group.counts[entry.severity] += 1;
@@ -218,10 +215,26 @@ export const CertificateDoctor: React.FC = () => {
             dataSource={entries}
             renderItem={(entry) => (
                 <List.Item>
-                    <Space align="start" style={{ width: "100%" }}>
-                        {statusTag(entry.severity)}
-                        <Text>{entryDetails(entry)}</Text>
-                    </Space>
+                    <div
+                        style={{
+                            display: "flex",
+                            justifyContent: "space-between",
+                            alignItems: "flex-start",
+                            gap: 12,
+                            flexWrap: "wrap",
+                            width: "100%",
+                        }}
+                    >
+                        <Space align="start" style={{ flex: "1 1 420px", minWidth: 0 }}>
+                            {statusTag(entry.severity)}
+                            <Text>{entryDetails(entry)}</Text>
+                        </Space>
+                        {entry.path && (
+                            <div style={{ marginLeft: "auto", minWidth: 0, textAlign: "right" }}>
+                                <EllipsisText value={entry.path} />
+                            </div>
+                        )}
+                    </div>
                 </List.Item>
             )}
         />
@@ -353,13 +366,6 @@ export const CertificateDoctor: React.FC = () => {
                     </Button>
                 </Col>
             </Row>
-
-            <Alert
-                type="info"
-                showIcon
-                title={t("settings.diagnostics.readOnlyTitle")}
-                description={t("settings.diagnostics.readOnlyDescription")}
-            />
 
             {errorKey && (
                 <Alert
@@ -514,7 +520,6 @@ export const CertificateDoctor: React.FC = () => {
                                                 <Text strong>{group.scope}</Text>
                                                 <Text type="secondary">{detailSummary(group)}</Text>
                                             </Space>
-                                            {group.path && <EllipsisText value={group.path} />}
                                         </div>
                                     ),
                                     children: renderDetailGroup(group),
