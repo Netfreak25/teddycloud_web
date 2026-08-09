@@ -135,8 +135,12 @@ export const useFileBrowserCore = ({
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [initialPathProp, mode]);
 
-    // overlay → reset path + URL + force reload
+    // Reset only when an already mounted browser actually changes overlay.
+    // Resetting on mount would discard the source-derived initial directory.
+    const previousOverlayRef = useRef(overlay);
     useEffect(() => {
+        if (previousOverlayRef.current === overlay) return;
+        previousOverlayRef.current = overlay;
         if (!overlay) return;
 
         if (mode === "fileBrowser" && trackUrl) {

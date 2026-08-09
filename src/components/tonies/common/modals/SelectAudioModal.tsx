@@ -137,11 +137,13 @@ export const SelectAudioModal: React.FC<SelectAudioModalProps> = ({
         </div>
     );
 
-    const workingInitialPath = initialPath.startsWith("lib://by/contentHash/")
-        ? "by/contentHash/"
-        : initialPath && initialPath.startsWith("lib://")
-          ? initialPath.replace(/^lib:\/\//, "").replace(/[^/]+$/, "")
-          : initialPath;
+    const workingInitialPath = (
+        initialPath.startsWith("lib://by/contentHash/")
+            ? "by/contentHash"
+            : initialPath && initialPath.startsWith("lib://")
+              ? initialPath.replace(/^lib:\/\//, "").replace(/[^/]+$/, "")
+              : initialPath
+    ).replace(/\/+$/, "");
 
     return (
         <Modal
