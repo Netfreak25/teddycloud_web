@@ -114,7 +114,7 @@ export const useESP32Flasher = (
     const [isOverwriteForceConfirmationModalOpen, setIsOverwriteForceConfirmationModalOpen] =
         useState(false);
     const [extractCertificateErrorMessage, setExtractCertificateErrorMessage] = useState("");
-    const [certDir, setCertDir] = useState<string>("certs/client");
+    const [certDir, setCertDir] = useState<string>("certs/client_tb1");
     const [isOpenAvailableBoxesModal, setIsOpenAvailableBoxesModal] = useState(false);
 
     const [currentStep, setCurrentStep] = useState(0);

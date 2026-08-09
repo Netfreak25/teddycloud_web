@@ -20,25 +20,25 @@ export const Step1Certificates: React.FC = () => {
                     code={`# extract firmware
 esptool.py -b 921600 read_flash 0x0 0x800000 tb.esp32.bin
 # extract certficates from firmware
-mkdir certs/client/esp32
-mkdir certs/client/<mac>
-teddycloud --esp32-extract tb.esp32.bin --destination certs/client/esp32
+mkdir certs/client_tb1/esp32
+mkdir certs/client_tb1/<mac>
+teddycloud --esp32-extract tb.esp32.bin --destination certs/client_tb1/esp32
 
 # Copy box certificates to teddyCloud
-cp certs/client/esp32/CLIENT.DER certs/client/<mac>/client.der
-cp certs/client/esp32/PRIVATE.DER certs/client/<mac>/private.der
-cp certs/client/esp32/CA.DER certs/client/<mac>/ca.der
+cp certs/client_tb1/esp32/CLIENT.DER certs/client_tb1/<mac>/client.der
+cp certs/client_tb1/esp32/PRIVATE.DER certs/client_tb1/<mac>/private.der
+cp certs/client_tb1/esp32/CA.DER certs/client_tb1/<mac>/ca.der
 
 # In case of first Toniebox setup for TeddyCloud
-cp certs/client/<mac>/client.der certs/client/client.der
-cp certs/client/<mac>/private.der certs/client/private.der
-cp certs/client/<mac>/ca.der certs/client/ca.der
+cp certs/client_tb1/<mac>/client.der certs/client_tb1/client.der
+cp certs/client_tb1/<mac>/private.der certs/client_tb1/private.der
+cp certs/client_tb1/<mac>/ca.der certs/client_tb1/ca.der
 
 # Copy certificates to temporary dir
-mkdir certs/client/esp32-fakeca
-cp certs/client/esp32/CLIENT.DER certs/client/esp32-fakeca/
-cp certs/client/esp32/PRIVATE.DER certs/client/esp32-fakeca/
-cp certs/server/ca.der certs/client/esp32-fakeca/CA.DER`}
+mkdir certs/client_tb1/esp32-fakeca
+cp certs/client_tb1/esp32/CLIENT.DER certs/client_tb1/esp32-fakeca/
+cp certs/client_tb1/esp32/PRIVATE.DER certs/client_tb1/esp32-fakeca/
+cp certs/server_tb1/ca.der certs/client_tb1/esp32-fakeca/CA.DER`}
                 />
             </Paragraph>
 
@@ -54,7 +54,7 @@ cp certs/server/ca.der certs/client/esp32-fakeca/CA.DER`}
 cp tb.esp32.bin tb.esp32.fakeca.bin
 
 # inject new CA into firmware
-teddycloud --esp32-inject tb.esp32.fakeca.bin --source certs/client/esp32-fakeca
+teddycloud --esp32-inject tb.esp32.fakeca.bin --source certs/client_tb1/esp32-fakeca
 # modify IP/hostname (optional)
 teddycloud --esp32-hostpatch tb.esp32.fakeca.bin --hostname <YOUR-IP/HOST>
 
