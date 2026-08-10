@@ -24,6 +24,7 @@ import {
 } from "../../types/tonieTypes";
 import {
     TonieboxCardsList,
+    TonieboxBedtimeCommand,
     TonieboxCardProps,
     TonieboxCommandResponse,
     TonieboxPlaybackCommand,
@@ -106,6 +107,21 @@ export class TeddyCloudApi extends runtime.BaseAPI {
         initOverrides?: RequestInit | runtime.InitOverrideFunction,
     ): Promise<TonieboxCommandResponse> {
         return this.apiPostTonieboxControl("/api/box/ping", overlay, undefined, initOverrides);
+    }
+
+    async apiControlTonieboxBedtime(
+        overlay: string,
+        command: TonieboxBedtimeCommand,
+        initOverrides?: RequestInit | runtime.InitOverrideFunction,
+    ): Promise<TonieboxCommandResponse> {
+        return this.apiPostTonieboxControl("/api/box/bedtime", overlay, command, initOverrides);
+    }
+
+    async apiSleepToniebox(
+        overlay: string,
+        initOverrides?: RequestInit | runtime.InitOverrideFunction,
+    ): Promise<TonieboxCommandResponse> {
+        return this.apiPostTonieboxControl("/api/box/sleep", overlay, {}, initOverrides);
     }
 
     /**

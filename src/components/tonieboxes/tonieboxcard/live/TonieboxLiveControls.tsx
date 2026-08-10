@@ -1,12 +1,27 @@
 import { useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { Button, Flex, Slider, Space, Tag, theme, Tooltip, Typography } from "antd";
+import {
+    Button,
+    Divider,
+    Flex,
+    Input,
+    InputNumber,
+    Modal,
+    Slider,
+    Space,
+    Switch,
+    Tag,
+    theme,
+    Tooltip,
+    Typography,
+} from "antd";
 import { useNavigate } from "react-router-dom";
 import {
     CaretRightOutlined,
     CustomerServiceOutlined,
     MoonOutlined,
     PauseOutlined,
+    PoweroffOutlined,
     ReloadOutlined,
     SoundOutlined,
     StepBackwardOutlined,
@@ -19,7 +34,11 @@ import { TeddyCloudApi } from "../../../../api";
 import { defaultAPIConfig } from "../../../../config/defaultApiConfig";
 import { useTeddyCloud } from "../../../../provider/TeddyCloudProvider";
 import { NotificationTypeEnum } from "../../../../types/teddyCloudNotificationTypes";
-import { TonieboxPlaybackAction, TonieboxRuntime } from "../../../../types/tonieboxTypes";
+import {
+    TonieboxBedtimeCommand,
+    TonieboxPlaybackAction,
+    TonieboxRuntime,
+} from "../../../../types/tonieboxTypes";
 import { TonieCardProps } from "../../../../types/tonieTypes";
 import { ChapterDrawer } from "./ChapterDrawer";
 import { formatPlaybackTime } from "./formatTime";
@@ -28,6 +47,10 @@ const api = new TeddyCloudApi(defaultAPIConfig());
 const VOLUME_MIN = 0;
 const VOLUME_MAX = 10;
 const CONTROL_SIZE = 36;
+const BEDTIME_MINUTES_MIN = 5;
+const BEDTIME_MINUTES_MAX = 24 * 60;
+const BEDTIME_MINUTES_DEFAULT = 30;
+const ALARM_VOLUME_DEFAULT = 50;
 
 const resolveTapEditRoute = (editTarget?: string): string | undefined => {
     const target = editTarget?.trim();
@@ -101,8 +124,14 @@ export const TonieboxLiveControls = ({
     const { token } = theme.useToken();
     const { addNotification } = useTeddyCloud();
     const [chapterDrawerOpen, setChapterDrawerOpen] = useState(false);
+    const [bedtimeModalOpen, setBedtimeModalOpen] = useState(false);
     const [commandInFlight, setCommandInFlight] = useState<string>();
     const [volume, setVolume] = useState(runtime.volume.level ?? VOLUME_MIN);
+    const [bedtimeMinutes, setBedtimeMinutes] = useState(BEDTIME_MINUTES_DEFAULT);
+    const [oneTimeAlarm, setOneTimeAlarm] = useState(false);
+    const [alarmTone, setAlarmTone] = useState("");
+    const [alarmVolume, setAlarmVolume] = useState(ALARM_VOLUME_DEFAULT);
+    const [morningLight, setMorningLight] = useState(true);
     const [now, setNow] = useState(Date.now());
 
     const playback = runtime.playback;
@@ -125,6 +154,10 @@ export const TonieboxLiveControls = ({
         runtime.volume.level !== null;
     const bedtimeState = runtime.bedtime.state?.toLowerCase();
     const bedtimeActive = bedtimeState === "active" || bedtimeState === "on";
+    const bedtimeControlEnabled =
+        !readOnly && runtime.online && runtime.controls.bedtime && !commandPending;
+    const sleepControlEnabled =
+        !readOnly && runtime.online && bedtimeActive && runtime.controls.sleep && !commandPending;
 
     const middleAction: TonieboxPlaybackAction | undefined =
         playback.status === "playing"
@@ -205,6 +238,74 @@ export const TonieboxLiveControls = ({
         }
     };
 
+    const openBedtimeControls = () => {
+        const durationSeconds =
+            runtime.bedtime.duration ??
+            runtime.bedtime.defaultDuration ??
+            BEDTIME_MINUTES_DEFAULT * 60;
+        setBedtimeMinutes(
+            Math.min(
+                BEDTIME_MINUTES_MAX,
+                Math.max(BEDTIME_MINUTES_MIN, Math.ceil(durationSeconds / 60)),
+            ),
+        );
+        setBedtimeModalOpen(true);
+    };
+
+    const startBedtime = async () => {
+        const command: TonieboxBedtimeCommand = {
+            state: "on",
+            duration: bedtimeMinutes * 60,
+            ...(oneTimeAlarm
+                ? {
+                      oneTimeAlarm: true,
+                      alarm: {
+                          tone: alarmTone.trim(),
+                          volume: alarmVolume,
+                          morningLight,
+                      },
+                  }
+                : {}),
+        };
+
+        setCommandInFlight("bedtime-on");
+        try {
+            await api.apiControlTonieboxBedtime(overlay, command);
+            setBedtimeModalOpen(false);
+            await refreshAfterCommand();
+        } catch (error) {
+            reportCommandError(error);
+        } finally {
+            setCommandInFlight(undefined);
+        }
+    };
+
+    const stopBedtime = async () => {
+        setCommandInFlight("bedtime-off");
+        try {
+            await api.apiControlTonieboxBedtime(overlay, { state: "off" });
+            setBedtimeModalOpen(false);
+            await refreshAfterCommand();
+        } catch (error) {
+            reportCommandError(error);
+        } finally {
+            setCommandInFlight(undefined);
+        }
+    };
+
+    const sleepNow = async () => {
+        setCommandInFlight("sleep");
+        try {
+            await api.apiSleepToniebox(overlay);
+            setBedtimeModalOpen(false);
+            await refreshAfterCommand();
+        } catch (error) {
+            reportCommandError(error);
+        } finally {
+            setCommandInFlight(undefined);
+        }
+    };
+
     const savePlaylist = async (title: string, playlistTracks: string[]) => {
         if (!tonie?.ruid) return false;
 
@@ -257,7 +358,7 @@ export const TonieboxLiveControls = ({
               runtime.bedtime.state,
               runtime.bedtime.duration !== null
                   ? t("tonieboxes.live.bedtimeDuration", {
-                        minutes: runtime.bedtime.duration,
+                        minutes: Math.ceil(runtime.bedtime.duration / 60),
                     })
                   : undefined,
               runtime.bedtime.until
@@ -279,7 +380,8 @@ export const TonieboxLiveControls = ({
             {(runtime.battery.valid ||
                 runtime.headphones.valid ||
                 runtime.bedtime.valid ||
-                runtime.controls.bedtime) && (
+                runtime.controls.bedtime ||
+                runtime.controls.sleep) && (
                 <Flex align="center" gap={12} style={{ marginBottom: hasActivePlayback ? 10 : 0 }}>
                     {runtime.battery.valid && (
                         <Tooltip title={runtime.battery.status || t("tonieboxes.live.battery")}>
@@ -317,7 +419,12 @@ export const TonieboxLiveControls = ({
                                     ...controlButtonStyle,
                                     color: bedtimeActive ? token.colorWarning : undefined,
                                 }}
-                                disabled={readOnly || !runtime.online || !runtime.controls.bedtime}
+                                disabled={
+                                    readOnly ||
+                                    !runtime.online ||
+                                    (!runtime.controls.bedtime && !runtime.controls.sleep)
+                                }
+                                onClick={openBedtimeControls}
                             />
                         </span>
                     </Tooltip>
@@ -496,6 +603,132 @@ export const TonieboxLiveControls = ({
                 onSelectChapter={(index) => void selectChapter(index)}
                 onSavePlaylist={savePlaylist}
             />
+
+            <Modal
+                open={bedtimeModalOpen}
+                title={t("tonieboxes.live.bedtimeControl")}
+                onCancel={() => setBedtimeModalOpen(false)}
+                width={440}
+                footer={
+                    <Flex wrap gap={8} justify="flex-end">
+                        <Button onClick={() => setBedtimeModalOpen(false)}>
+                            {t("tonieboxes.live.bedtimeCancel")}
+                        </Button>
+                        {bedtimeActive && (
+                            <Button
+                                danger
+                                disabled={!bedtimeControlEnabled}
+                                loading={commandInFlight === "bedtime-off"}
+                                onClick={() => void stopBedtime()}
+                            >
+                                {t("tonieboxes.live.bedtimeStop")}
+                            </Button>
+                        )}
+                        {bedtimeActive && runtime.controls.sleep && (
+                            <Button
+                                icon={<PoweroffOutlined />}
+                                disabled={!sleepControlEnabled}
+                                loading={commandInFlight === "sleep"}
+                                onClick={() => void sleepNow()}
+                            >
+                                {t("tonieboxes.live.sleepNow")}
+                            </Button>
+                        )}
+                        <Button
+                            type="primary"
+                            disabled={
+                                !bedtimeControlEnabled ||
+                                (oneTimeAlarm && alarmTone.trim().length === 0)
+                            }
+                            loading={commandInFlight === "bedtime-on"}
+                            onClick={() => void startBedtime()}
+                        >
+                            {bedtimeActive
+                                ? t("tonieboxes.live.bedtimeUpdate")
+                                : t("tonieboxes.live.bedtimeStart")}
+                        </Button>
+                    </Flex>
+                }
+            >
+                <Flex vertical gap={8}>
+                    <Typography.Text>{t("tonieboxes.live.bedtimeDurationLabel")}</Typography.Text>
+                    <InputNumber
+                        min={BEDTIME_MINUTES_MIN}
+                        max={BEDTIME_MINUTES_MAX}
+                        precision={0}
+                        value={bedtimeMinutes}
+                        addonAfter={t("tonieboxes.live.minutes")}
+                        disabled={!bedtimeControlEnabled}
+                        onChange={(value) =>
+                            setBedtimeMinutes(
+                                value === null
+                                    ? BEDTIME_MINUTES_DEFAULT
+                                    : Math.min(
+                                          BEDTIME_MINUTES_MAX,
+                                          Math.max(BEDTIME_MINUTES_MIN, Math.round(value)),
+                                      ),
+                            )
+                        }
+                        style={{ width: "100%" }}
+                    />
+                    <Typography.Text type="secondary">
+                        {t("tonieboxes.live.bedtimeDurationHint")}
+                    </Typography.Text>
+
+                    <Divider style={{ marginBlock: 12 }} />
+
+                    <Flex align="center" justify="space-between" gap={16}>
+                        <div>
+                            <Typography.Text>{t("tonieboxes.live.oneTimeAlarm")}</Typography.Text>
+                            <Typography.Text type="secondary" style={{ display: "block" }}>
+                                {t("tonieboxes.live.oneTimeAlarmHint")}
+                            </Typography.Text>
+                        </div>
+                        <Switch
+                            checked={oneTimeAlarm}
+                            disabled={!bedtimeControlEnabled}
+                            onChange={setOneTimeAlarm}
+                        />
+                    </Flex>
+
+                    {oneTimeAlarm && (
+                        <Flex vertical gap={8} style={{ marginTop: 8 }}>
+                            <Typography.Text>{t("tonieboxes.live.alarmTone")}</Typography.Text>
+                            <Input
+                                value={alarmTone}
+                                placeholder={t("tonieboxes.live.alarmTonePlaceholder")}
+                                disabled={!bedtimeControlEnabled}
+                                onChange={(event) => setAlarmTone(event.target.value)}
+                            />
+                            <Typography.Text>{t("tonieboxes.live.alarmVolume")}</Typography.Text>
+                            <InputNumber
+                                min={0}
+                                max={100}
+                                value={alarmVolume}
+                                disabled={!bedtimeControlEnabled}
+                                onChange={(value) => setAlarmVolume(value ?? ALARM_VOLUME_DEFAULT)}
+                                style={{ width: "100%" }}
+                            />
+                            <Flex align="center" justify="space-between" gap={16}>
+                                <Typography.Text>
+                                    {t("tonieboxes.live.morningLight")}
+                                </Typography.Text>
+                                <Switch
+                                    checked={morningLight}
+                                    disabled={!bedtimeControlEnabled}
+                                    onChange={setMorningLight}
+                                />
+                            </Flex>
+                        </Flex>
+                    )}
+
+                    {bedtimeActive && (
+                        <Typography.Text type="secondary" style={{ marginTop: 8 }}>
+                            {t("tonieboxes.live.sleepHint")}
+                        </Typography.Text>
+                    )}
+                </Flex>
+            </Modal>
         </div>
     );
 };

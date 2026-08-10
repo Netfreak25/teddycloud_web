@@ -13,6 +13,7 @@ export type TonieboxRuntimeControls = {
     volume: boolean;
     ping: boolean;
     bedtime: boolean;
+    sleep: boolean;
 };
 
 export type TonieboxPlaybackRuntime = {
@@ -93,6 +94,21 @@ export type TonieboxPlaybackAction = "start" | "pause" | "next" | "prev" | "rest
 export type TonieboxPlaybackCommand =
     | { action: TonieboxPlaybackAction }
     | { action: "setPosition"; chapter: number; ms: number };
+
+export type TonieboxOneTimeAlarm = {
+    tone: string;
+    volume: number;
+    morningLight: boolean;
+};
+
+export type TonieboxBedtimeCommand =
+    | { state: "off" }
+    | {
+          state: "on";
+          duration: number;
+          oneTimeAlarm?: boolean;
+          alarm?: TonieboxOneTimeAlarm;
+      };
 
 export type TonieboxCommandResponse = {
     ok: boolean;
