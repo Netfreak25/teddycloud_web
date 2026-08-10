@@ -7,6 +7,7 @@ import {
     Input,
     InputNumber,
     Modal,
+    Popconfirm,
     Slider,
     Space,
     Switch,
@@ -158,6 +159,12 @@ export const TonieboxLiveControls = ({
         !readOnly && runtime.online && runtime.controls.bedtime && !commandPending;
     const sleepControlEnabled =
         !readOnly && runtime.online && bedtimeActive && runtime.controls.sleep && !commandPending;
+    const shutdownControlEnabled =
+        !readOnly &&
+        runtime.online &&
+        runtime.controls.sleep &&
+        (bedtimeActive || runtime.controls.bedtime) &&
+        !commandPending;
 
     const middleAction: TonieboxPlaybackAction | undefined =
         playback.status === "playing"
@@ -306,6 +313,18 @@ export const TonieboxLiveControls = ({
         }
     };
 
+    const shutdownNow = async () => {
+        setCommandInFlight("shutdown");
+        try {
+            await api.apiShutdownToniebox(overlay);
+            await refreshAfterCommand();
+        } catch (error) {
+            reportCommandError(error);
+        } finally {
+            setCommandInFlight(undefined);
+        }
+    };
+
     const savePlaylist = async (title: string, playlistTracks: string[]) => {
         if (!tonie?.ruid) return false;
 
@@ -381,7 +400,8 @@ export const TonieboxLiveControls = ({
                 runtime.headphones.valid ||
                 runtime.bedtime.valid ||
                 runtime.controls.bedtime ||
-                runtime.controls.sleep) && (
+                runtime.controls.sleep ||
+                runtime.online) && (
                 <Flex align="center" gap={12} style={{ marginBottom: hasActivePlayback ? 10 : 0 }}>
                     {runtime.battery.valid && (
                         <Tooltip title={runtime.battery.status || t("tonieboxes.live.battery")}>
@@ -428,6 +448,37 @@ export const TonieboxLiveControls = ({
                             />
                         </span>
                     </Tooltip>
+                    {runtime.online && (
+                        <Popconfirm
+                            title={t("tonieboxes.live.shutdownConfirmTitle")}
+                            description={t("tonieboxes.live.shutdownConfirmDescription")}
+                            okText={t("tonieboxes.live.shutdownConfirmAction")}
+                            cancelText={t("tonieboxes.live.bedtimeCancel")}
+                            okButtonProps={{ danger: true }}
+                            disabled={!shutdownControlEnabled}
+                            onConfirm={shutdownNow}
+                        >
+                            <Tooltip
+                                title={
+                                    shutdownControlEnabled
+                                        ? t("tonieboxes.live.shutdown")
+                                        : t("tonieboxes.live.shutdownUnavailable")
+                                }
+                            >
+                                <span>
+                                    <Button
+                                        aria-label={t("tonieboxes.live.shutdown")}
+                                        type="text"
+                                        danger
+                                        icon={<PoweroffOutlined />}
+                                        style={controlButtonStyle}
+                                        disabled={!shutdownControlEnabled}
+                                        loading={commandInFlight === "shutdown"}
+                                    />
+                                </span>
+                            </Tooltip>
+                        </Popconfirm>
+                    )}
                 </Flex>
             )}
             {hasActivePlayback && (

@@ -124,6 +124,13 @@ export class TeddyCloudApi extends runtime.BaseAPI {
         return this.apiPostTonieboxControl("/api/box/sleep", overlay, {}, initOverrides);
     }
 
+    async apiShutdownToniebox(
+        overlay: string,
+        initOverrides?: RequestInit | runtime.InitOverrideFunction,
+    ): Promise<TonieboxCommandResponse> {
+        return this.apiPostTonieboxControl("/api/box/shutdown", overlay, {}, initOverrides);
+    }
+
     /**
      * get all tags RAW
      */
