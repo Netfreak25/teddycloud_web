@@ -8,7 +8,7 @@ export type TonieInfo = {
 };
 
 export type ContentPlaylist = {
-    kind: "direct_taf" | "tap";
+    kind: "direct_taf" | "native_collection" | "tap";
     editable: boolean;
     chapterCount: number;
     title: string;

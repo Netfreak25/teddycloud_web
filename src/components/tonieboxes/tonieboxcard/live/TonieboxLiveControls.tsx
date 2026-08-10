@@ -79,7 +79,11 @@ const resolvePlaybackTracks = (tonie?: TonieCardProps): string[] => {
         });
     }
 
-    if (tonie?.playlist?.kind === "direct_taf" || tonie?.playlist?.editable) {
+    if (
+        tonie?.playlist?.kind === "direct_taf" ||
+        tonie?.playlist?.kind === "native_collection" ||
+        tonie?.playlist?.editable
+    ) {
         return Array.from({ length: tonie.playlist.chapterCount }, (_, index) => {
             return tonie.playlist?.tracks[index]?.trim() || "";
         });
