@@ -174,7 +174,11 @@ export const EditTonieModal: React.FC<EditTonieModalProps> = ({
 
     const normalizedCachePreference = (selectedCachePreference || "auto") as "auto" | "taf" | "v3";
     const hasAssignedSource = selectedSource.trim().length > 0;
-    const canRestoreOriginal = hasAssignedSource && (originalTafAvailable || originalV3Available);
+    const canRestoreOriginalTaf =
+        originalTafAvailable && (hasAssignedSource || normalizedCachePreference !== "taf");
+    const canRestoreOriginalV3 =
+        originalV3Available && (hasAssignedSource || normalizedCachePreference !== "v3");
+    const canRestoreOriginal = canRestoreOriginalTaf || canRestoreOriginalV3;
 
     const handleRestoreOriginal = (preference: "taf" | "v3") => {
         onSelectedSourceChange("");
@@ -278,7 +282,7 @@ export const EditTonieModal: React.FC<EditTonieModalProps> = ({
                                     marginTop: 8,
                                 }}
                             >
-                                {originalTafAvailable && (
+                                {canRestoreOriginalTaf && (
                                     <Button
                                         type="default"
                                         icon={<RollbackOutlined />}
@@ -287,7 +291,7 @@ export const EditTonieModal: React.FC<EditTonieModalProps> = ({
                                         {t("tonies.editModal.restoreOriginalTaf")}
                                     </Button>
                                 )}
-                                {originalV3Available && (
+                                {canRestoreOriginalV3 && (
                                     <Button
                                         type="default"
                                         icon={<RollbackOutlined />}
