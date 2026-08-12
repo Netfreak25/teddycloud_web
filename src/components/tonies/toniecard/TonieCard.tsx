@@ -694,6 +694,8 @@ export const TonieCard: React.FC<{
                 showCachePreference={shouldShowCachePreference}
                 selectedCachePreference={selectedCachePreference}
                 onSelectedCachePreferenceChange={setSelectedCachePreference}
+                originalTafAvailable={tonieCard.cacheState?.tafComplete === true}
+                originalV3Available={tonieCard.cacheState?.v3Complete === true}
                 modelAudioPath={modelAudioPath}
                 modelAudioHasMapping={modelAudioHasMapping}
                 modelDisplayText={selectedModelDisplayText}

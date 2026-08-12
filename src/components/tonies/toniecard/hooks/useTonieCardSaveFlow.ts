@@ -165,11 +165,15 @@ export const useTonieCardSaveFlow = ({
         }
     };
 
-    const handleSourceSave = async () => {
+    const handleSourceSave = async (includeCachePreference: boolean) => {
         try {
+            const sourcePayload = "source=" + encodeURIComponent(selectedSource);
+            const cachePreferencePayload = includeCachePreference
+                ? "&cache_preference=" + encodeURIComponent(selectedCachePreference || "auto")
+                : "";
             await api.apiPostTeddyCloudContentJson(
                 tonieCard.ruid,
-                "source=" + encodeURIComponent(selectedSource),
+                sourcePayload + cachePreferencePayload,
                 overlay,
             );
 
@@ -254,15 +258,17 @@ export const useTonieCardSaveFlow = ({
         }
 
         try {
+            let cachePreferenceSaved = false;
             if ((tonieCard.source || "") !== selectedSource) {
-                await handleSourceSave();
+                await handleSourceSave(needsCachePreferenceSave);
+                cachePreferenceSaved = needsCachePreferenceSave;
                 // When syncing source from model, always update tonie_model so backend
                 // does not show "assigned alternative content" (item vs item2 match).
                 if (selectedModel && modelAudioPath && selectedSource === modelAudioPath) {
                     await handleModelSave();
                 }
             }
-            if (needsCachePreferenceSave) {
+            if (needsCachePreferenceSave && !cachePreferenceSaved) {
                 await handleCachePreferenceSave();
             }
             if (needsModelSave) {
