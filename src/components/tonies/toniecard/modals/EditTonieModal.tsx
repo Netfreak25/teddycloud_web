@@ -1,6 +1,6 @@
 import React from "react";
 import { useTranslation } from "react-i18next";
-import { Button, Divider, Form, Input, Modal, theme, Tooltip, Typography } from "antd";
+import { Button, Divider, Form, Input, Modal, Select, theme, Tooltip, Typography } from "antd";
 import {
     CloseOutlined,
     EditOutlined,
@@ -56,6 +56,11 @@ interface EditTonieModalProps {
     // File selection
     onOpenFileSelectModal: () => void;
 
+    // Cache preference
+    showCachePreference?: boolean;
+    selectedCachePreference?: "auto" | "taf" | "v3";
+    onSelectedCachePreferenceChange?: (value: "auto" | "taf" | "v3") => void;
+
     // Set audio from model (when source differs from model and model audio exists in library)
     modelAudioPath?: string | null;
     modelAudioHasMapping?: boolean;
@@ -102,6 +107,9 @@ export const EditTonieModal: React.FC<EditTonieModalProps> = ({
     onSearchModelChange,
     hasPendingChanges,
     onOpenFileSelectModal,
+    showCachePreference = false,
+    selectedCachePreference = "auto",
+    onSelectedCachePreferenceChange,
     modelAudioPath,
     modelAudioHasMapping = false,
     modelDisplayText = "",
@@ -159,6 +167,8 @@ export const EditTonieModal: React.FC<EditTonieModalProps> = ({
     const setAudioFromModelTooltip = !modelAudioPath
         ? t("tonies.editModal.setAudioFromModelUnavailableInLibrary")
         : undefined;
+
+    const normalizedCachePreference = (selectedCachePreference || "auto") as "auto" | "taf" | "v3";
 
     return (
         <Modal
@@ -261,6 +271,37 @@ export const EditTonieModal: React.FC<EditTonieModalProps> = ({
                     )}
                 </Form.Item>
             </div>
+
+            {showCachePreference && (
+                <>
+                    <Divider orientation="horizontal" titlePlacement="left">
+                        {t("tonies.editModal.cachePreference")}
+                    </Divider>
+                    <div>
+                        <Form.Item>
+                            <Select
+                                value={normalizedCachePreference}
+                                onChange={(value) =>
+                                    onSelectedCachePreferenceChange?.(
+                                        value as "auto" | "taf" | "v3",
+                                    )
+                                }
+                                options={[
+                                    {
+                                        value: "auto",
+                                        label: t("tonies.editModal.cachePreferenceAuto"),
+                                    },
+                                    {
+                                        value: "taf",
+                                        label: t("tonies.editModal.cachePreferenceTaf"),
+                                    },
+                                    { value: "v3", label: t("tonies.editModal.cachePreferenceV3") },
+                                ]}
+                            />
+                        </Form.Item>
+                    </div>
+                </>
+            )}
 
             <Divider orientation="horizontal" titlePlacement="left">
                 {t("tonies.editModal.model")}

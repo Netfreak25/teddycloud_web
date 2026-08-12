@@ -103,6 +103,9 @@ export const TonieCard: React.FC<{
     const [selectedModel, setSelectedModel] = useState<string>(tonieCard.tonieInfo.model || "");
     const [selectedSource, setSelectedSource] = useState<string>(tonieCard.source || "");
     const [tempSelectedSource, setTempSelectedSource] = useState<string>(tonieCard.source || "");
+    const [selectedCachePreference, setSelectedCachePreference] = useState<"auto" | "taf" | "v3">(
+        (tonieCard.cachePreference || "auto") as "auto" | "taf" | "v3",
+    );
 
     const customModelKeys = useCustomModelKeys(isEditModalOpen);
     const isSelectedModelCustom = customModelKeys.has(toModelKey(selectedModel));
@@ -124,6 +127,10 @@ export const TonieCard: React.FC<{
         setSelectedSource(tonieCard.source || "");
         setTempSelectedSource(tonieCard.source || "");
     }, [tonieCard.source]);
+
+    useEffect(() => {
+        setSelectedCachePreference((tonieCard.cachePreference || "auto") as "auto" | "taf" | "v3");
+    }, [tonieCard.cachePreference]);
 
     const [inputValidationModel, setInputValidationModel] = useState<{
         validateStatus: ValidateStatus;
@@ -175,7 +182,11 @@ export const TonieCard: React.FC<{
 
     const hasPendingChanges =
         selectedSource !== (tonieCard.source || "") ||
-        selectedModel !== (tonieCard.tonieInfo.model || "");
+        selectedModel !== (tonieCard.tonieInfo.model || "") ||
+        selectedCachePreference !==
+            ((tonieCard.cachePreference || "auto") as "auto" | "taf" | "v3");
+
+    const shouldShowCachePreference = (selectedSource || "").trim().length === 0;
 
     // ------------------------
     // API helper
@@ -264,6 +275,7 @@ export const TonieCard: React.FC<{
         modelTitle,
         selectedModel,
         selectedSource,
+        selectedCachePreference,
         resolvedAudioModel,
         modelAudioPath,
         fetchUpdatedTonieCard,
@@ -679,6 +691,9 @@ export const TonieCard: React.FC<{
                 onSearchModelChange={searchModelResultChanged}
                 hasPendingChanges={hasPendingChanges}
                 onOpenFileSelectModal={showFileSelectModal}
+                showCachePreference={shouldShowCachePreference}
+                selectedCachePreference={selectedCachePreference}
+                onSelectedCachePreferenceChange={setSelectedCachePreference}
                 modelAudioPath={modelAudioPath}
                 modelAudioHasMapping={modelAudioHasMapping}
                 modelDisplayText={selectedModelDisplayText}

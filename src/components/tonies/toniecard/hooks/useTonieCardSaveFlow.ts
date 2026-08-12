@@ -14,6 +14,7 @@ type UseTonieCardSaveFlowParams = {
     modelTitle: string;
     selectedModel: string;
     selectedSource: string;
+    selectedCachePreference: "auto" | "taf" | "v3";
     resolvedAudioModel: string;
     modelAudioPath: string | null;
     fetchUpdatedTonieCard: () => Promise<void>;
@@ -110,6 +111,7 @@ export const useTonieCardSaveFlow = ({
     modelTitle,
     selectedModel,
     selectedSource,
+    selectedCachePreference,
     resolvedAudioModel,
     modelAudioPath,
     fetchUpdatedTonieCard,
@@ -209,8 +211,18 @@ export const useTonieCardSaveFlow = ({
         }
     };
 
+    const handleCachePreferenceSave = async () => {
+        await api.apiPostTeddyCloudContentJson(
+            tonieCard.ruid,
+            "cache_preference=" + encodeURIComponent(selectedCachePreference || "auto"),
+            overlay,
+        );
+    };
+
     const handleSaveChanges = async () => {
         const needsModelSave = (tonieCard.tonieInfo.model || "") !== selectedModel;
+        const needsCachePreferenceSave =
+            (tonieCard.cachePreference || "auto") !== selectedCachePreference;
         const trimmedSelectedModel = selectedModel.trim();
 
         if (needsModelSave && trimmedSelectedModel) {
@@ -249,6 +261,9 @@ export const useTonieCardSaveFlow = ({
                 if (selectedModel && modelAudioPath && selectedSource === modelAudioPath) {
                     await handleModelSave();
                 }
+            }
+            if (needsCachePreferenceSave) {
+                await handleCachePreferenceSave();
             }
             if (needsModelSave) {
                 await handleModelSave();

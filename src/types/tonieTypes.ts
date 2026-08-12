@@ -33,6 +33,12 @@ export type TonieCardProps = {
     nocloud: boolean;
     hasCloudAuth: boolean;
     source: string;
+    cachePreference?: "auto" | "taf" | "v3";
+    cacheState?: {
+        tafComplete: boolean;
+        v3Complete: boolean;
+        v3ContentVersion?: number;
+    };
     audioUrl: string;
     downloadTriggerUrl: string;
     tonieInfo: TonieInfo;
