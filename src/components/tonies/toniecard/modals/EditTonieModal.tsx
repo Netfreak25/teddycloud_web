@@ -174,14 +174,19 @@ export const EditTonieModal: React.FC<EditTonieModalProps> = ({
 
     const normalizedCachePreference = (selectedCachePreference || "auto") as "auto" | "taf" | "v3";
     const hasAssignedSource = selectedSource.trim().length > 0;
-    const canRestoreOriginalTaf =
-        originalTafAvailable && (hasAssignedSource || normalizedCachePreference !== "taf");
+    const originalTafLibrarySource = (modelAudioPath || "").trim();
+    const originalTafAvailableForRestore =
+        originalTafAvailable || originalTafLibrarySource.length > 0;
+    const usingOriginalTaf =
+        sourceMatchesModelAudio ||
+        (!hasAssignedSource && originalTafAvailable && normalizedCachePreference === "taf");
+    const canRestoreOriginalTaf = originalTafAvailableForRestore && !usingOriginalTaf;
     const canRestoreOriginalV3 =
         originalV3Available && (hasAssignedSource || normalizedCachePreference !== "v3");
     const canRestoreOriginal = canRestoreOriginalTaf || canRestoreOriginalV3;
 
     const handleRestoreOriginal = (preference: "taf" | "v3") => {
-        onSelectedSourceChange("");
+        onSelectedSourceChange(preference === "taf" ? originalTafLibrarySource : "");
         onSelectedCachePreferenceChange?.(preference);
         setInputValidationSource({ validateStatus: "", help: "" });
     };
