@@ -47,6 +47,7 @@ import { formatPlaybackTime } from "./formatTime";
 const api = new TeddyCloudApi(defaultAPIConfig());
 const VOLUME_MIN = 1;
 const VOLUME_MAX = 12;
+const VOLUME_FALLBACK = 2;
 const CONTROL_SIZE = 36;
 const BEDTIME_MINUTES_MIN = 5;
 const BEDTIME_MINUTES_MAX = 24 * 60;
@@ -131,7 +132,7 @@ export const TonieboxLiveControls = ({
     const [chapterDrawerOpen, setChapterDrawerOpen] = useState(false);
     const [bedtimeModalOpen, setBedtimeModalOpen] = useState(false);
     const [commandInFlight, setCommandInFlight] = useState<string>();
-    const [volume, setVolume] = useState(runtime.volume.level ?? VOLUME_MIN);
+    const [volume, setVolume] = useState(runtime.volume.level ?? VOLUME_FALLBACK);
     const [bedtimeMinutes, setBedtimeMinutes] = useState(BEDTIME_MINUTES_DEFAULT);
     const [oneTimeAlarm, setOneTimeAlarm] = useState(false);
     const [alarmTone, setAlarmTone] = useState("");
@@ -151,12 +152,7 @@ export const TonieboxLiveControls = ({
             : undefined;
     const playbackEnabled =
         !readOnly && runtime.online && runtime.controls.playback && playback.valid;
-    const volumeEnabled =
-        !readOnly &&
-        runtime.online &&
-        runtime.controls.volume &&
-        runtime.volume.valid &&
-        runtime.volume.level !== null;
+    const volumeEnabled = !readOnly && runtime.online && runtime.controls.volume;
     const bedtimeState = runtime.bedtime.state?.toLowerCase();
     const bedtimeActive = bedtimeState === "active" || bedtimeState === "on";
     const bedtimeControlEnabled =
@@ -183,10 +179,8 @@ export const TonieboxLiveControls = ({
     }, [now, playback.chapterUntilMs]);
 
     useEffect(() => {
-        if (runtime.volume.valid && runtime.volume.level !== null) {
-            setVolume(runtime.volume.level);
-        }
-    }, [runtime.volume.level, runtime.volume.valid]);
+        setVolume(runtime.volume.level ?? VOLUME_FALLBACK);
+    }, [runtime.volume.level]);
 
     useEffect(() => {
         if (playback.status !== "playing" || playback.chapterUntilMs === null) return;
@@ -242,7 +236,7 @@ export const TonieboxLiveControls = ({
             await api.apiControlTonieboxVolume(overlay, level);
             await refreshAfterCommand();
         } catch (error) {
-            setVolume(runtime.volume.level ?? VOLUME_MIN);
+            setVolume(runtime.volume.level ?? VOLUME_FALLBACK);
             reportCommandError(error);
         } finally {
             setCommandInFlight(undefined);

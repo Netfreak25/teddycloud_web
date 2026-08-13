@@ -32,6 +32,7 @@ export type TonieboxVolumeRuntime = {
     valid: boolean;
     updatedAt: number;
     level: number | null;
+    source?: "reported" | "command" | "persisted" | "fallback";
 };
 
 export type TonieboxBatteryRuntime = {
