@@ -45,8 +45,8 @@ import { ChapterDrawer } from "./ChapterDrawer";
 import { formatPlaybackTime } from "./formatTime";
 
 const api = new TeddyCloudApi(defaultAPIConfig());
-const VOLUME_MIN = 0;
-const VOLUME_MAX = 10;
+const VOLUME_MIN = 1;
+const VOLUME_MAX = 12;
 const CONTROL_SIZE = 36;
 const BEDTIME_MINUTES_MIN = 5;
 const BEDTIME_MINUTES_MAX = 24 * 60;
