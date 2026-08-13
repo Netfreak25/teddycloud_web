@@ -139,13 +139,38 @@ export const TeddyAudioPlayerPage: React.FC<TeddyAudioPlayerPageProps> = ({
             const collection = record.nativeCollection!;
             const source = `lib://by/contentHash/${collection.contentHash}/library-entry.json`;
             const assigned = tonies.find((tonie) => tonie.source === source);
-            const title = assigned?.sourceInfo?.series || assigned?.tonieInfo.series;
-            const subtitle = assigned?.sourceInfo?.episode || assigned?.tonieInfo.episode;
-            const picture = assigned?.sourceInfo?.picture || assigned?.tonieInfo.picture;
+            const title =
+                record.tonieInfo?.series ||
+                assigned?.playlist?.title ||
+                assigned?.sourceInfo?.series ||
+                assigned?.tonieInfo.series;
+            const subtitle =
+                record.tonieInfo?.episode ||
+                assigned?.sourceInfo?.episode ||
+                assigned?.tonieInfo.episode;
+            const libraryPicture = record.tonieInfo?.picture;
+            const picture =
+                (libraryPicture && !libraryPicture.endsWith("img_unknown.png")
+                    ? libraryPicture
+                    : undefined) ||
+                assigned?.sourceInfo?.picture ||
+                assigned?.tonieInfo.picture;
+            const tracks = [
+                record.tonieInfo?.tracks,
+                assigned?.playlist?.tracks,
+                assigned?.sourceInfo?.tracks,
+                assigned?.tonieInfo.tracks,
+            ].find(
+                (candidate) =>
+                    candidate?.length === collection.chapterCount &&
+                    candidate.every((track) => track.trim().length > 0),
+            );
             return nativeCollectionToPlaybackItem(collection, overlay, {
                 title,
                 subtitle,
                 picture,
+                tracks,
+                fallbackTrackTitle: (number) => t("tonieboxes.live.chapter", { number }),
             });
         });
         const seen = new Set<string>();

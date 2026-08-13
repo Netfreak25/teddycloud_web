@@ -365,7 +365,15 @@ export const FileBrowser: React.FC<{
 
     const playNativeCollection = (record: Record) => {
         if (!isNativeCollectionRecord(record)) return;
-        playPlaybackItem(nativeCollectionToPlaybackItem(record.nativeCollection, overlay));
+        playPlaybackItem(
+            nativeCollectionToPlaybackItem(record.nativeCollection, overlay, {
+                title: record.tonieInfo?.series,
+                subtitle: record.tonieInfo?.episode,
+                picture: record.tonieInfo?.picture,
+                tracks: record.tonieInfo?.tracks,
+                fallbackTrackTitle: (number) => t("tonieboxes.live.chapter", { number }),
+            }),
+        );
     };
 
     const downloadNativeCollection = async (record: Record) => {

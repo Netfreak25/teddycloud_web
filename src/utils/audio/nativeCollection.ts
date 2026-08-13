@@ -91,27 +91,52 @@ export const loadNativeCollectionFromSource = async (
 export const nativeCollectionToPlaybackItem = (
     collection: NativeCollectionSummary,
     overlay = "",
-    metadata?: { title?: string; subtitle?: string; picture?: string },
-): AudioPlaybackItem => ({
-    id: collection.contentHash,
-    kind: "tb2_native_collection",
-    title: metadata?.title || `TB2 ${collection.contentHash.slice(0, 12)}`,
-    subtitle: metadata?.subtitle || "Ogg/Opus",
-    picture: metadata?.picture || "/img_unknown.png",
-    sources: collection.chapters.map((chapter, index) => ({
-        url: buildLibraryFileUrl(chapter.path, overlay),
-        title: chapter.originalName || `Chapter ${index + 1}`,
-    })),
-    tracks: collection.chapters.map((chapter, index) => ({
-        title: chapter.originalName || `Chapter ${index + 1}`,
-        sourceIndex: index,
-        startSeconds: 0,
-    })),
-    searchText: [
-        collection.contentHash,
-        ...collection.chapters.map((chapter) => chapter.originalName),
-    ].join(" "),
-});
+    metadata?: {
+        title?: string;
+        subtitle?: string;
+        picture?: string;
+        tracks?: string[];
+        fallbackTrackTitle?: (number: number) => string;
+    },
+): AudioPlaybackItem => {
+    const metadataTracks =
+        metadata?.tracks?.length === collection.chapterCount &&
+        metadata.tracks.every((title) => title.trim().length > 0)
+            ? metadata.tracks.map((title) => title.trim())
+            : undefined;
+    const trackTitles = collection.chapters.map(
+        (_chapter, index) =>
+            metadataTracks?.[index] ||
+            metadata?.fallbackTrackTitle?.(index + 1) ||
+            `Chapter ${index + 1}`,
+    );
+
+    return {
+        id: collection.contentHash,
+        kind: "tb2_native_collection",
+        title: metadata?.title || `TB2 ${collection.contentHash.slice(0, 12)}`,
+        subtitle: metadata?.subtitle || "Ogg/Opus",
+        picture: metadata?.picture || "/img_unknown.png",
+        sources: collection.chapters.map((chapter, index) => ({
+            url: buildLibraryFileUrl(chapter.path, overlay),
+            title: trackTitles[index],
+        })),
+        tracks: trackTitles.map((title, index) => ({
+            title,
+            sourceIndex: index,
+            startSeconds: 0,
+        })),
+        searchText: [
+            collection.contentHash,
+            metadata?.title,
+            metadata?.subtitle,
+            ...trackTitles,
+            ...collection.chapters.map((chapter) => chapter.originalName),
+        ]
+            .filter(Boolean)
+            .join(" "),
+    };
+};
 
 const fetchLibraryFile = async (path: string, overlay: string) => {
     const response = await fetch(buildLibraryFileUrl(path, overlay));

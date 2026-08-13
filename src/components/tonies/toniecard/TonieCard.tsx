@@ -243,9 +243,22 @@ export const TonieCard: React.FC<{
                 const collection = await loadNativeCollectionFromSource(tonieCard.source, overlay);
                 playPlaybackItem(
                     nativeCollectionToPlaybackItem(collection, overlay, {
-                        title: tonieCard.sourceInfo?.series || tonieCard.tonieInfo.series,
+                        title:
+                            tonieCard.playlist?.title ||
+                            tonieCard.sourceInfo?.series ||
+                            tonieCard.tonieInfo.series,
                         subtitle: tonieCard.sourceInfo?.episode || tonieCard.tonieInfo.episode,
                         picture: tonieCard.sourceInfo?.picture || tonieCard.tonieInfo.picture,
+                        tracks: [
+                            tonieCard.playlist?.tracks,
+                            tonieCard.sourceInfo?.tracks,
+                            tonieCard.tonieInfo.tracks,
+                        ].find(
+                            (candidate) =>
+                                candidate?.length === collection.chapterCount &&
+                                candidate.every((track) => track.trim().length > 0),
+                        ),
+                        fallbackTrackTitle: (number) => t("tonieboxes.live.chapter", { number }),
                     }),
                 );
             } catch (error) {

@@ -332,6 +332,7 @@ export const createColumns = (options: CreateColumnsOptions): any[] => {
                 ) : (
                     displayName
                 );
+                const nativePicture = record.nativeCollection ? getPictureSrc(record) : null;
                 const nativeMetadata =
                     record.tonieplayCollection && mode === "full" ? (
                         <div style={{ marginTop: 4 }}>
@@ -344,14 +345,24 @@ export const createColumns = (options: CreateColumnsOptions): any[] => {
                             </span>
                         </div>
                     ) : record.nativeCollection && mode === "full" ? (
-                        <div style={{ marginTop: 4 }}>
-                            <Tag color="blue">TB2 / Ogg-Opus</Tag>
-                            <span>
-                                {t("fileBrowser.nativeCollection.summary", {
-                                    count: record.nativeCollection.chapterCount,
-                                    size: humanFileSize(record.nativeCollection.totalSize),
-                                })}
-                            </span>
+                        <div
+                            style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 4 }}
+                        >
+                            {nativePicture ? (
+                                <ThumbnailCell
+                                    src={nativePicture}
+                                    alt={t("tonies.content.toniePicture")}
+                                />
+                            ) : null}
+                            <div>
+                                <Tag color="blue">TB2 / Ogg-Opus</Tag>
+                                <span>
+                                    {t("fileBrowser.nativeCollection.summary", {
+                                        count: record.nativeCollection.chapterCount,
+                                        size: humanFileSize(record.nativeCollection.totalSize),
+                                    })}
+                                </span>
+                            </div>
                         </div>
                     ) : null;
                 if (isCompactCustomSelect) {
@@ -491,6 +502,10 @@ export const createColumns = (options: CreateColumnsOptions): any[] => {
                         record.tonieInfo?.series.toLowerCase().includes(text)) ||
                     ("tonieInfo" in record &&
                         record.tonieInfo?.episode.toLowerCase().includes(text)) ||
+                    ("tonieInfo" in record &&
+                        record.tonieInfo?.tracks?.some((title) =>
+                            title.toLowerCase().includes(text),
+                        )) ||
                     (record.date && new Date(record.date * 1000).toLocaleString().includes(text))
                 );
             },
