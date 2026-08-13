@@ -103,6 +103,7 @@ export const TonieCard: React.FC<{
     const [selectedModel, setSelectedModel] = useState<string>(tonieCard.tonieInfo.model || "");
     const [selectedSource, setSelectedSource] = useState<string>(tonieCard.source || "");
     const [tempSelectedSource, setTempSelectedSource] = useState<string>(tonieCard.source || "");
+    const [restoredOriginalSource, setRestoredOriginalSource] = useState<string | null>(null);
     const [selectedCachePreference, setSelectedCachePreference] = useState<"auto" | "taf" | "v3">(
         (tonieCard.cachePreference || "auto") as "auto" | "taf" | "v3",
     );
@@ -126,7 +127,14 @@ export const TonieCard: React.FC<{
     useEffect(() => {
         setSelectedSource(tonieCard.source || "");
         setTempSelectedSource(tonieCard.source || "");
+        setRestoredOriginalSource(null);
     }, [tonieCard.source]);
+
+    useEffect(() => {
+        if (!isEditModalOpen) {
+            setRestoredOriginalSource(null);
+        }
+    }, [isEditModalOpen]);
 
     useEffect(() => {
         setSelectedCachePreference((tonieCard.cachePreference || "auto") as "auto" | "taf" | "v3");
@@ -288,6 +296,7 @@ export const TonieCard: React.FC<{
         modelTitle,
         selectedModel,
         selectedSource,
+        restoredOriginalSource,
         selectedCachePreference,
         resolvedAudioModel,
         modelAudioPath,
@@ -313,6 +322,7 @@ export const TonieCard: React.FC<{
     const handleFileSelected = (result: { path: string }) => {
         setSelectedSource(result.path);
         setTempSelectedSource(result.path);
+        setRestoredOriginalSource(null);
         setSelectFileModalOpen(false);
     };
 
@@ -331,6 +341,7 @@ export const TonieCard: React.FC<{
 
     const searchRadioResultChanged = (newValue: string) => {
         setSelectedSource(newValue);
+        setRestoredOriginalSource(null);
     };
 
     // ------------------------
@@ -342,6 +353,7 @@ export const TonieCard: React.FC<{
         setSelectedModel(model);
         setSelectedSource(tonieCard.source || "");
         setTempSelectedSource(tonieCard.source || "");
+        setRestoredOriginalSource(null);
         if (model && tonieCard.tonieInfo.series) {
             const episode = tonieCard.tonieInfo.episode || "";
             setSelectedModelDisplayText(
@@ -470,7 +482,7 @@ export const TonieCard: React.FC<{
         isNativeCollectionSource(tonieCard.source || "") ? (
             <PlayCircleOutlined key="playpause" onClick={() => void handlePlayPauseClick()} />
         ) : tonieCard.downloadTriggerUrl && tonieCard.downloadTriggerUrl.length > 0 && !readOnly ? (
-            !toniesCloudAvailable ? (
+            tonieCard.downloadTriggerKind !== "v3" && !toniesCloudAvailable ? (
                 <Tooltip title={t("tonies.connectionToBoxineNotAvailable")}>
                     <div style={{ position: "relative", display: "inline-block" }}>
                         <StopOutlined
@@ -676,6 +688,7 @@ export const TonieCard: React.FC<{
                 onSelectedSourceChange={(value) => {
                     setSelectedSource(value);
                     setTempSelectedSource(value);
+                    setRestoredOriginalSource(null);
                 }}
                 originalSource={tonieCard.source || ""}
                 inputValidationSource={inputValidationSource}
@@ -707,8 +720,13 @@ export const TonieCard: React.FC<{
                 showCachePreference={shouldShowCachePreference}
                 selectedCachePreference={selectedCachePreference}
                 onSelectedCachePreferenceChange={setSelectedCachePreference}
-                originalTafAvailable={tonieCard.cacheState?.tafComplete === true}
-                originalV3Available={tonieCard.cacheState?.v3Complete === true}
+                originalV3Source={tonieCard.cacheState?.v3Source}
+                preferredOriginalKind={tonieCard.cacheState?.preferredOriginalKind}
+                onRestoreOriginalSource={(value) => {
+                    setSelectedSource(value);
+                    setTempSelectedSource(value);
+                    setRestoredOriginalSource(value);
+                }}
                 modelAudioPath={modelAudioPath}
                 modelAudioHasMapping={modelAudioHasMapping}
                 modelDisplayText={selectedModelDisplayText}

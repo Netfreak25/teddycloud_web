@@ -37,10 +37,14 @@ export type TonieCardProps = {
     cacheState?: {
         tafComplete: boolean;
         v3Complete: boolean;
+        v3SourceComplete?: boolean;
         v3ContentVersion?: number;
+        v3Source?: string;
+        preferredOriginalKind?: "taf" | "v3";
     };
     audioUrl: string;
     downloadTriggerUrl: string;
+    downloadTriggerKind?: "taf" | "v3";
     tonieInfo: TonieInfo;
     sourceInfo: TonieInfo;
     playlist?: ContentPlaylist;

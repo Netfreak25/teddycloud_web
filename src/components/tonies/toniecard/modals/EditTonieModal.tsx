@@ -60,8 +60,9 @@ interface EditTonieModalProps {
     showCachePreference?: boolean;
     selectedCachePreference?: "auto" | "taf" | "v3";
     onSelectedCachePreferenceChange?: (value: "auto" | "taf" | "v3") => void;
-    originalTafAvailable?: boolean;
-    originalV3Available?: boolean;
+    originalV3Source?: string;
+    preferredOriginalKind?: "taf" | "v3";
+    onRestoreOriginalSource: (value: string) => void;
 
     // Set audio from model (when source differs from model and model audio exists in library)
     modelAudioPath?: string | null;
@@ -112,8 +113,9 @@ export const EditTonieModal: React.FC<EditTonieModalProps> = ({
     showCachePreference = false,
     selectedCachePreference = "auto",
     onSelectedCachePreferenceChange,
-    originalTafAvailable = false,
-    originalV3Available = false,
+    originalV3Source,
+    preferredOriginalKind,
+    onRestoreOriginalSource,
     modelAudioPath,
     modelAudioHasMapping = false,
     modelDisplayText = "",
@@ -173,21 +175,21 @@ export const EditTonieModal: React.FC<EditTonieModalProps> = ({
         : undefined;
 
     const normalizedCachePreference = (selectedCachePreference || "auto") as "auto" | "taf" | "v3";
-    const hasAssignedSource = selectedSource.trim().length > 0;
     const originalTafLibrarySource = (modelAudioPath || "").trim();
-    const originalTafAvailableForRestore =
-        originalTafAvailable || originalTafLibrarySource.length > 0;
-    const usingOriginalTaf =
-        sourceMatchesModelAudio ||
-        (!hasAssignedSource && originalTafAvailable && normalizedCachePreference === "taf");
-    const canRestoreOriginalTaf = originalTafAvailableForRestore && !usingOriginalTaf;
-    const canRestoreOriginalV3 =
-        originalV3Available && (hasAssignedSource || normalizedCachePreference !== "v3");
-    const canRestoreOriginal = canRestoreOriginalTaf || canRestoreOriginalV3;
+    const originalV3LibrarySource = (originalV3Source || "").trim();
+    const selectedOriginalKind =
+        normalizedCachePreference === "auto" ? preferredOriginalKind : normalizedCachePreference;
+    const restoreOriginalSource =
+        selectedOriginalKind === "taf"
+            ? originalTafLibrarySource
+            : selectedOriginalKind === "v3"
+              ? originalV3LibrarySource
+              : "";
+    const canRestoreOriginal =
+        restoreOriginalSource.length > 0 && selectedSource.trim() !== restoreOriginalSource;
 
-    const handleRestoreOriginal = (preference: "taf" | "v3") => {
-        onSelectedSourceChange(preference === "taf" ? originalTafLibrarySource : "");
-        onSelectedCachePreferenceChange?.(preference);
+    const handleRestoreOriginal = () => {
+        onRestoreOriginalSource(restoreOriginalSource);
         setInputValidationSource({ validateStatus: "", help: "" });
     };
 
@@ -279,32 +281,18 @@ export const EditTonieModal: React.FC<EditTonieModalProps> = ({
                             <Text type="secondary">
                                 {t("tonies.editModal.restoreOriginalHint")}
                             </Text>
-                            <div
-                                style={{
-                                    display: "flex",
-                                    flexWrap: "wrap",
-                                    gap: 8,
-                                    marginTop: 8,
-                                }}
-                            >
-                                {canRestoreOriginalTaf && (
-                                    <Button
-                                        type="default"
-                                        icon={<RollbackOutlined />}
-                                        onClick={() => handleRestoreOriginal("taf")}
-                                    >
-                                        {t("tonies.editModal.restoreOriginalTaf")}
-                                    </Button>
-                                )}
-                                {canRestoreOriginalV3 && (
-                                    <Button
-                                        type="default"
-                                        icon={<RollbackOutlined />}
-                                        onClick={() => handleRestoreOriginal("v3")}
-                                    >
-                                        {t("tonies.editModal.restoreOriginalV3")}
-                                    </Button>
-                                )}
+                            <div style={{ marginTop: 8 }}>
+                                <Button
+                                    type="default"
+                                    icon={<RollbackOutlined />}
+                                    onClick={handleRestoreOriginal}
+                                >
+                                    {t(
+                                        selectedOriginalKind === "taf"
+                                            ? "tonies.editModal.restoreOriginalTaf"
+                                            : "tonies.editModal.restoreOriginalV3",
+                                    )}
+                                </Button>
                             </div>
                         </div>
                     )}

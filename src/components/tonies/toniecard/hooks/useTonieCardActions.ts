@@ -5,6 +5,15 @@ import { TonieCardProps } from "../../../../types/tonieTypes";
 
 const api = new TeddyCloudApi(defaultAPIConfig());
 
+type V3DownloadResult = {
+    success?: boolean;
+    sourceAssigned?: boolean;
+    source?: string;
+    assignmentReason?: string;
+    stage?: string;
+    message?: string;
+};
+
 type UseTonieCardActionsParams = {
     tonieCard: TonieCardProps;
     overlay: string;
@@ -125,6 +134,7 @@ export const useTonieCardActions = ({
         if (!path) return;
 
         const key = "loading" + tonieCard.ruid;
+        let v3Result: V3DownloadResult | undefined;
 
         try {
             addLoadingNotification(
@@ -137,18 +147,15 @@ export const useTonieCardActions = ({
             );
 
             const response = await api.apiGetTeddyCloudApiRaw(path);
-            // eslint-disable-next-line @typescript-eslint/no-unused-vars
-            const blob = await response.blob();
-            closeLoadingNotification(key);
-
-            notifySuccess(
-                t("tonies.messages.downloadedFile"),
-                t("tonies.messages.downloadedFileDetails", {
-                    model: modelTitle,
-                    ruid: tonieCard.ruid,
-                }).replace(' "" ', " "),
-            );
-            await fetchUpdatedTonieCard();
+            if (tonieCard.downloadTriggerKind === "v3") {
+                v3Result = (await response.json()) as V3DownloadResult;
+                if (v3Result.success !== true) {
+                    const detail = [v3Result.stage, v3Result.message].filter(Boolean).join(": ");
+                    throw new Error(detail || "V3 download failed");
+                }
+            } else {
+                await response.blob();
+            }
         } catch (error) {
             closeLoadingNotification(key);
             notifyError(
@@ -157,6 +164,40 @@ export const useTonieCardActions = ({
                     model: modelTitle,
                     ruid: tonieCard.ruid,
                 }).replace(' "" ', ""),
+                error,
+            );
+            return;
+        }
+
+        closeLoadingNotification(key);
+        if (v3Result && v3Result.sourceAssigned !== true) {
+            notifySuccess(
+                t("tonies.messages.downloadedV3CacheOnly"),
+                t("tonies.messages.downloadedV3CacheOnlyDetails", {
+                    model: modelTitle,
+                    ruid: tonieCard.ruid,
+                    reason: v3Result.assignmentReason || "not_assigned",
+                }).replace(' "" ', " "),
+            );
+        } else {
+            notifySuccess(
+                t("tonies.messages.downloadedFile"),
+                t("tonies.messages.downloadedFileDetails", {
+                    model: modelTitle,
+                    ruid: tonieCard.ruid,
+                }).replace(' "" ', " "),
+            );
+        }
+
+        try {
+            await fetchUpdatedTonieCard();
+        } catch (error) {
+            notifyError(
+                t("tonies.messages.errorFetchingUpdatedCard"),
+                t("tonies.messages.errorFetchingUpdatedCardDetails", {
+                    model: modelTitle,
+                    ruid: tonieCard.ruid,
+                }),
                 error,
             );
         }

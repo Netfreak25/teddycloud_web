@@ -14,6 +14,7 @@ type UseTonieCardSaveFlowParams = {
     modelTitle: string;
     selectedModel: string;
     selectedSource: string;
+    restoredOriginalSource: string | null;
     selectedCachePreference: "auto" | "taf" | "v3";
     resolvedAudioModel: string;
     modelAudioPath: string | null;
@@ -111,6 +112,7 @@ export const useTonieCardSaveFlow = ({
     modelTitle,
     selectedModel,
     selectedSource,
+    restoredOriginalSource,
     selectedCachePreference,
     resolvedAudioModel,
     modelAudioPath,
@@ -206,7 +208,11 @@ export const useTonieCardSaveFlow = ({
             throw error;
         }
 
-        if (!tonieCard.nocloud) {
+        const isOriginalCacheSource =
+            restoredOriginalSource !== null &&
+            restoredOriginalSource.length > 0 &&
+            selectedSource === restoredOriginalSource;
+        if (!tonieCard.nocloud && !isOriginalCacheSource) {
             await handleNoCloudClick();
         }
         const shouldBeLive = selectedSource.startsWith("http");
