@@ -41,7 +41,11 @@ export interface TonieplayCollectionSummary {
     totalSize: number;
     libraryEntryPath: string;
     manifestPath: string;
-    metadata?: { [key: string]: unknown };
+    metadata?: {
+        title?: unknown;
+        name?: unknown;
+        [key: string]: unknown;
+    };
     objects: TonieplayCollectionObject[];
 }
 

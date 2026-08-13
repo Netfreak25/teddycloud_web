@@ -29,6 +29,7 @@ import {
     SELECT_IMAGE_THUMB_COL_WIDTH,
     SELECT_IMAGE_CELL_GAP_HALF,
 } from "../../../../constants/selectImageTableLayoutSizes";
+import { tonieplayCollectionDisplayName } from "../../../../utils/audio/nativeCollection";
 
 const { useToken } = theme;
 
@@ -238,17 +239,27 @@ export const createColumns = (options: CreateColumnsOptions): any[] => {
                         (selectNativeCollections &&
                             (record?.nativeCollection || record?.tonieplayCollection))) &&
                     record?.name !== "..";
+                const tonieplayName = record?.tonieplayCollection
+                    ? tonieplayCollectionDisplayName(record.tonieplayCollection)
+                    : undefined;
                 const displayName = record?.tonieplayCollection ? (
                     mode === "full" ? (
                         <span title={record.tonieplayCollection.contentHash}>
-                            <span className="showSmallDevicesOnly">
-                                {record.tonieplayCollection.contentHash.slice(0, 12)}…
-                            </span>
-                            <span className="showMediumDevicesOnly showBigDevicesOnly">
-                                {record.tonieplayCollection.contentHash}
-                            </span>
+                            <span>{tonieplayName || record.tonieplayCollection.contentHash}</span>
+                            {tonieplayName ? (
+                                <span
+                                    style={{
+                                        display: "block",
+                                        color: token.colorTextSecondary,
+                                        fontSize: 12,
+                                    }}
+                                >
+                                    {record.tonieplayCollection.contentHash.slice(0, 12)}…
+                                </span>
+                            ) : null}
                         </span>
                     ) : (
+                        tonieplayName ||
                         t("tonies.selectFileModal.tonieplayCollection", {
                             count: record.tonieplayCollection.objectCount,
                             hash: record.tonieplayCollection.contentHash.slice(0, 12),
@@ -485,6 +496,10 @@ export const createColumns = (options: CreateColumnsOptions): any[] => {
                         chapter.originalName.toLowerCase().includes(text),
                     ) ||
                     record.tonieplayCollection?.contentHash.toLowerCase().includes(text) ||
+                    (record.tonieplayCollection &&
+                        tonieplayCollectionDisplayName(record.tonieplayCollection)
+                            ?.toLowerCase()
+                            .includes(text)) ||
                     record.tonieplayCollection?.objects.some(
                         (object) =>
                             object.name.toLowerCase().includes(text) ||

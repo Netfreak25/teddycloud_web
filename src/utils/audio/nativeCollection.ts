@@ -179,6 +179,16 @@ export const isNativeCollectionRecord = (
 ): record is Record & { nativeCollection: NativeCollectionSummary } =>
     record.entryKind === "tb2_native_collection" && !!record.nativeCollection;
 
+export const tonieplayCollectionDisplayName = (
+    collection: TonieplayCollectionSummary,
+): string | undefined => {
+    const title = collection.metadata?.title;
+    if (typeof title === "string" && title.trim()) return title.trim();
+
+    const name = collection.metadata?.name;
+    return typeof name === "string" && name.trim() ? name.trim() : undefined;
+};
+
 export const downloadTonieplayCollectionZip = async (
     collection: TonieplayCollectionSummary,
     overlay = "",
