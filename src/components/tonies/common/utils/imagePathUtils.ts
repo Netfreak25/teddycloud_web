@@ -22,6 +22,9 @@ export const toImageSrc = (url?: string): string => {
     return raw.startsWith("/") ? `${base.replace(/\/$/, "")}${raw}` : raw;
 };
 
+export const resolveTonieDisplayPicture = (customImage?: string, modelPicture?: string): string =>
+    customImage?.trim() || modelPicture?.trim() || "/img_unknown.png";
+
 export const toCustomImgWebPath = (path: string, fileName: string): string => {
     const normalizedPath = normalizeDirPath(path);
     return normalizedPath ? `/custom_img/${normalizedPath}/${fileName}` : `/custom_img/${fileName}`;

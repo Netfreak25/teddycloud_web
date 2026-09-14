@@ -3,6 +3,7 @@ import { theme } from "antd";
 
 import QuestionMarkSVG from "../icons/QuestionMarkIcon";
 import { useTonies } from "../../../hooks/useTonies";
+import { resolveTonieDisplayPicture, toImageSrc } from "../../tonies/common/utils/imagePathUtils";
 
 const { useToken } = theme;
 
@@ -51,19 +52,20 @@ export const TonieMeetingElement: React.FC<TonieMeetingElementProps> = ({
 
     const tonieData = useMemo(() => {
         return tonies
-            .filter(
-                (item) =>
-                    !item.tonieInfo.picture.endsWith("/img_unknown.png") &&
-                    item.tonieInfo.picture !== null &&
-                    item.tonieInfo.picture !== undefined &&
-                    item.tonieInfo.picture !== "" &&
-                    !item.nocloud,
-            )
+            .filter((item) => {
+                const picture = resolveTonieDisplayPicture(
+                    item.customImage,
+                    item.tonieInfo.picture,
+                );
+                return !picture.endsWith("/img_unknown.png") && !item.nocloud;
+            })
             .slice(0, maxNoOfGuests);
     }, [tonies]);
 
     useEffect(() => {
-        const allImages = tonieData.flatMap((item) => item.tonieInfo.picture);
+        const allImages = tonieData.map((item) =>
+            toImageSrc(resolveTonieDisplayPicture(item.customImage, item.tonieInfo.picture)),
+        );
 
         const shuffledImages = allImages.map((src, index) => {
             if (title && description) {

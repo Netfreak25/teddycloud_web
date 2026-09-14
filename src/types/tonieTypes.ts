@@ -32,6 +32,8 @@ export type TonieCardProps = {
     live: boolean;
     nocloud: boolean;
     hasCloudAuth: boolean;
+    comment?: string;
+    customImage?: string;
     source: string;
     cachePreference?: "auto" | "taf" | "v3";
     cacheState?: {

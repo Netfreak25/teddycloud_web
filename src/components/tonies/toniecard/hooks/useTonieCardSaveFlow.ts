@@ -13,12 +13,15 @@ type UseTonieCardSaveFlowParams = {
     overlay: string;
     modelTitle: string;
     selectedModel: string;
+    selectedComment: string;
+    customImageEnabled: boolean;
+    selectedImageFile: File | null;
     selectedSource: string;
     restoredOriginalSource: string | null;
     selectedCachePreference: "auto" | "taf" | "v3";
     resolvedAudioModel: string;
     modelAudioPath: string | null;
-    fetchUpdatedTonieCard: () => Promise<void>;
+    fetchUpdatedTonieCard: (refreshCustomImage?: boolean) => Promise<void>;
     setIsEditModalOpen: (open: boolean) => void;
     setInputValidationModel: (value: ValidationState) => void;
     setInputValidationSource: (value: ValidationState) => void;
@@ -111,6 +114,9 @@ export const useTonieCardSaveFlow = ({
     overlay,
     modelTitle,
     selectedModel,
+    selectedComment,
+    customImageEnabled,
+    selectedImageFile,
     selectedSource,
     restoredOriginalSource,
     selectedCachePreference,
@@ -125,6 +131,41 @@ export const useTonieCardSaveFlow = ({
     handleNoCloudClick,
     handleLiveClick,
 }: UseTonieCardSaveFlowParams) => {
+    const handleUserDataSave = async () => {
+        const commentChanged = (tonieCard.comment || "").trim() !== selectedComment.trim();
+        const imagePresent = Boolean(tonieCard.customImage);
+        const imageChanged = selectedImageFile !== null || customImageEnabled !== imagePresent;
+        if (!commentChanged && !imageChanged) {
+            return;
+        }
+
+        try {
+            if (selectedImageFile && customImageEnabled) {
+                await api.apiUploadTonieImage(tonieCard.ruid, selectedImageFile);
+            } else if (!customImageEnabled && imagePresent) {
+                await api.apiRemoveTonieImage(tonieCard.ruid);
+            }
+            if (commentChanged) {
+                await api.apiPostTonieMetadata(tonieCard.ruid, selectedComment.trim());
+            }
+            notifySuccess(
+                addNotification,
+                t,
+                t("tonies.messages.userDataSaved"),
+                t("tonies.messages.userDataSavedDetails", { ruid: tonieCard.ruid }),
+            );
+        } catch (error) {
+            notifyError(
+                addNotification,
+                t,
+                t("tonies.messages.userDataSaveFailed"),
+                t("tonies.messages.userDataSaveFailedDetails", { ruid: tonieCard.ruid }),
+                error,
+            );
+            throw error;
+        }
+    };
+
     const handleModelSave = async () => {
         try {
             await api.apiPostTeddyCloudContentJson(
@@ -264,6 +305,7 @@ export const useTonieCardSaveFlow = ({
         }
 
         try {
+            await handleUserDataSave();
             let cachePreferenceSaved = false;
             if ((tonieCard.source || "") !== selectedSource) {
                 await handleSourceSave(needsCachePreferenceSave);
@@ -281,12 +323,12 @@ export const useTonieCardSaveFlow = ({
                 await handleModelSave();
             }
         } catch {
-            await fetchUpdatedTonieCard();
+            await fetchUpdatedTonieCard(selectedImageFile !== null);
             return;
         }
 
         setIsEditModalOpen(false);
-        await fetchUpdatedTonieCard();
+        await fetchUpdatedTonieCard(selectedImageFile !== null);
     };
 
     return {

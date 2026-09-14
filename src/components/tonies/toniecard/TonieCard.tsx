@@ -3,6 +3,7 @@ import { useTranslation } from "react-i18next";
 import { Card, Checkbox, Tooltip, Typography, theme } from "antd";
 import {
     CloudSyncOutlined,
+    CommentOutlined,
     DownloadOutlined,
     EditOutlined,
     InfoCircleOutlined,
@@ -25,7 +26,7 @@ import { SelectAudioModal } from "../common/modals/SelectAudioModal";
 import { useAudioContext } from "../../../provider/AudioProvider";
 import { CustomModelEditor } from "../custommodel/CustomModelEditor";
 import { toModelKey, useCustomModelKeys } from "../hooks/useCustomModelKeys";
-import { toImageSrc } from "../common/utils/imagePathUtils";
+import { resolveTonieDisplayPicture, toImageSrc } from "../common/utils/imagePathUtils";
 import { useTonieCardActions } from "./hooks/useTonieCardActions";
 import { useResolvedModelAudio } from "./hooks/useResolvedModelAudio";
 import { useTooltipInfoByModel } from "./hooks/useTooltipInfoByModel";
@@ -101,6 +102,11 @@ export const TonieCard: React.FC<{
     // ------------------------
 
     const [selectedModel, setSelectedModel] = useState<string>(tonieCard.tonieInfo.model || "");
+    const [selectedComment, setSelectedComment] = useState<string>(tonieCard.comment || "");
+    const [customImageEnabled, setCustomImageEnabled] = useState<boolean>(
+        Boolean(tonieCard.customImage),
+    );
+    const [selectedImageFile, setSelectedImageFile] = useState<File | null>(null);
     const [selectedSource, setSelectedSource] = useState<string>(tonieCard.source || "");
     const [tempSelectedSource, setTempSelectedSource] = useState<string>(tonieCard.source || "");
     const [restoredOriginalSource, setRestoredOriginalSource] = useState<string | null>(null);
@@ -139,6 +145,12 @@ export const TonieCard: React.FC<{
     useEffect(() => {
         setSelectedCachePreference((tonieCard.cachePreference || "auto") as "auto" | "taf" | "v3");
     }, [tonieCard.cachePreference]);
+
+    useEffect(() => {
+        setSelectedComment(tonieCard.comment || "");
+        setCustomImageEnabled(Boolean(tonieCard.customImage));
+        setSelectedImageFile(null);
+    }, [tonieCard.comment, tonieCard.customImage]);
 
     const [inputValidationModel, setInputValidationModel] = useState<{
         validateStatus: ValidateStatus;
@@ -182,15 +194,15 @@ export const TonieCard: React.FC<{
         .filter(([ruid]) => ruid === tonieCard.ruid)
         .map(([, ruidTime, boxName]) => ({ ruidTime, boxName }));
 
-    const picture =
-        tonieCard.tonieInfo.picture && tonieCard.tonieInfo.picture.trim() !== ""
-            ? tonieCard.tonieInfo.picture
-            : "/img_unknown.png";
+    const picture = resolveTonieDisplayPicture(tonieCard.customImage, tonieCard.tonieInfo.picture);
     const pictureLooksUnknown = picture.endsWith("img_unknown.png");
 
     const hasPendingChanges =
         selectedSource !== (tonieCard.source || "") ||
         selectedModel !== (tonieCard.tonieInfo.model || "") ||
+        selectedComment.trim() !== (tonieCard.comment || "").trim() ||
+        customImageEnabled !== Boolean(tonieCard.customImage) ||
+        selectedImageFile !== null ||
         selectedCachePreference !==
             ((tonieCard.cachePreference || "auto") as "auto" | "taf" | "v3");
 
@@ -200,9 +212,12 @@ export const TonieCard: React.FC<{
     // API helper
     // ------------------------
 
-    const fetchUpdatedTonieCard = async () => {
+    const fetchUpdatedTonieCard = async (refreshCustomImage = false) => {
         try {
             const updatedTonieCard = await api.apiGetTagInfo(tonieCard.ruid, overlay);
+            if (refreshCustomImage && updatedTonieCard.customImage) {
+                updatedTonieCard.customImage += `?v=${Date.now()}`;
+            }
             onUpdate(updatedTonieCard);
         } catch (error) {
             addNotification(
@@ -256,7 +271,7 @@ export const TonieCard: React.FC<{
                             tonieCard.sourceInfo?.series ||
                             tonieCard.tonieInfo.series,
                         subtitle: tonieCard.sourceInfo?.episode || tonieCard.tonieInfo.episode,
-                        picture: tonieCard.sourceInfo?.picture || tonieCard.tonieInfo.picture,
+                        picture: tonieCard.sourceInfo?.picture || picture,
                         tracks: [
                             tonieCard.playlist?.tracks,
                             tonieCard.sourceInfo?.tracks,
@@ -285,7 +300,7 @@ export const TonieCard: React.FC<{
             : tonieCard.source;
         playAudio(
             url,
-            showSourceInfoPicture ? tonieCard.sourceInfo : tonieCard.tonieInfo,
+            showSourceInfoPicture ? tonieCard.sourceInfo : { ...tonieCard.tonieInfo, picture },
             tonieCard,
         );
     };
@@ -295,6 +310,9 @@ export const TonieCard: React.FC<{
         overlay,
         modelTitle,
         selectedModel,
+        selectedComment,
+        customImageEnabled,
+        selectedImageFile,
         selectedSource,
         restoredOriginalSource,
         selectedCachePreference,
@@ -354,6 +372,9 @@ export const TonieCard: React.FC<{
         setSelectedSource(tonieCard.source || "");
         setTempSelectedSource(tonieCard.source || "");
         setRestoredOriginalSource(null);
+        setSelectedComment(tonieCard.comment || "");
+        setCustomImageEnabled(Boolean(tonieCard.customImage));
+        setSelectedImageFile(null);
         if (model && tonieCard.tonieInfo.series) {
             const episode = tonieCard.tonieInfo.episode || "";
             setSelectedModelDisplayText(
@@ -584,6 +605,14 @@ export const TonieCard: React.FC<{
                                   : t("tonies.unsetTonie")}
                         </div>
                         <div style={{ display: "flex", justifyContent: "space-between", gap: 8 }}>
+                            {(tonieCard.comment || "").trim() ? (
+                                <Tooltip placement="top" zIndex={2} title={tonieCard.comment}>
+                                    <CommentOutlined
+                                        aria-label={t("tonies.commentTooltip")}
+                                        style={{ color: token.colorTextDescription }}
+                                    />
+                                </Tooltip>
+                            ) : null}
                             {languageCode && languageCode !== defaultLanguageCode ? (
                                 <Tooltip
                                     placement="top"
@@ -682,7 +711,10 @@ export const TonieCard: React.FC<{
             <EditTonieModal
                 open={isEditModalOpen}
                 title={editModalTitle}
-                onCancel={() => setIsEditModalOpen(false)}
+                onCancel={() => {
+                    setSelectedImageFile(null);
+                    setIsEditModalOpen(false);
+                }}
                 onSave={handleSaveChanges}
                 selectedSource={selectedSource}
                 onSelectedSourceChange={(value) => {
@@ -716,6 +748,13 @@ export const TonieCard: React.FC<{
                 keyTonieArticleSearch={keyTonieArticleSearch}
                 onSearchModelChange={searchModelResultChanged}
                 hasPendingChanges={hasPendingChanges}
+                selectedComment={selectedComment}
+                onSelectedCommentChange={setSelectedComment}
+                customImageEnabled={customImageEnabled}
+                onCustomImageEnabledChange={setCustomImageEnabled}
+                originalCustomImage={tonieCard.customImage ? toImageSrc(tonieCard.customImage) : ""}
+                selectedImageFile={selectedImageFile}
+                onSelectedImageFileChange={setSelectedImageFile}
                 onOpenFileSelectModal={showFileSelectModal}
                 showCachePreference={shouldShowCachePreference}
                 selectedCachePreference={selectedCachePreference}

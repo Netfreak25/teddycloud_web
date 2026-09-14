@@ -46,9 +46,8 @@ export async function exportToHTML(
             const card = tonieCards.find((c) => c.ruid === ruid);
             if (!card) return null;
 
-            const imgSrc = inlineImages
-                ? await tryInlineImage(card.tonieInfo.picture)
-                : toAbsoluteUrl(card.tonieInfo.picture);
+            const picture = card.customImage || card.tonieInfo.picture;
+            const imgSrc = inlineImages ? await tryInlineImage(picture) : toAbsoluteUrl(picture);
 
             return {
                 ruid,

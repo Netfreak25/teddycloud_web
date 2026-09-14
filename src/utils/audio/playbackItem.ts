@@ -1,10 +1,13 @@
 import { AudioPlaybackItem } from "../../types/audioPlaybackTypes";
 import { TonieCardProps } from "../../types/tonieTypes";
+import { resolveTonieDisplayPicture } from "../../components/tonies/common/utils/imagePathUtils";
 
 export const tonieToPlaybackItem = (tonie: TonieCardProps): AudioPlaybackItem => {
     const title = tonie.sourceInfo?.series || tonie.tonieInfo.series || "Unknown";
     const subtitle = tonie.sourceInfo?.episode || tonie.tonieInfo.episode || "";
-    const picture = tonie.sourceInfo?.picture || tonie.tonieInfo.picture || "/img_unknown.png";
+    const picture =
+        (tonie.source?.trim() ? tonie.sourceInfo?.picture : undefined) ||
+        resolveTonieDisplayPicture(tonie.customImage, tonie.tonieInfo.picture);
     const url = tonie.valid
         ? import.meta.env.VITE_APP_TEDDYCLOUD_API_URL + tonie.audioUrl
         : tonie.source;

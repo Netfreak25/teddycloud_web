@@ -14,7 +14,7 @@ import ConfirmationDialog from "../../../common/modals/ConfirmationModal";
 import { useTeddyCloud } from "../../../../provider/TeddyCloudProvider";
 import { NotificationTypeEnum } from "../../../../types/teddyCloudNotificationTypes";
 import { useAudioContext } from "../../../../provider/AudioProvider";
-import { toImageSrc } from "../utils/imagePathUtils";
+import { resolveTonieDisplayPicture, toImageSrc } from "../utils/imagePathUtils";
 
 const api = new TeddyCloudApi(defaultAPIConfig());
 
@@ -57,6 +57,10 @@ const TonieInformationModal: React.FC<InformationModalProps> = ({
     const [sourceTracks, setSourceTracks] = useState<string[]>([]);
 
     const [isDownloading, setIsDownloading] = useState<boolean>(false);
+    const modelPicture = resolveTonieDisplayPicture(
+        "customImage" in tonieCardOrTAFRecord ? tonieCardOrTAFRecord.customImage : undefined,
+        tonieCardOrTAFRecord.tonieInfo.picture,
+    );
 
     useEffect(() => {
         if (
@@ -85,7 +89,7 @@ const TonieInformationModal: React.FC<InformationModalProps> = ({
             url,
             showSourceInfo && "sourceInfo" in tonieCardOrTAFRecord
                 ? tonieCardOrTAFRecord.sourceInfo
-                : tonieCardOrTAFRecord.tonieInfo,
+                : { ...tonieCardOrTAFRecord.tonieInfo, picture: modelPicture },
             tonieCardOrTAFRecord,
             startTime,
         );
@@ -271,17 +275,7 @@ const TonieInformationModal: React.FC<InformationModalProps> = ({
                 onCancel={onClose}
             >
                 <div style={{ position: "relative" }}>
-                    {
-                        <img
-                            src={toImageSrc(
-                                tonieCardOrTAFRecord.tonieInfo?.picture?.trim()
-                                    ? tonieCardOrTAFRecord.tonieInfo.picture
-                                    : "/img_unknown.png",
-                            )}
-                            alt=""
-                            style={{ width: "100%" }}
-                        />
-                    }
+                    {<img src={toImageSrc(modelPicture)} alt="" style={{ width: "100%" }} />}
                     {informationFromSource ? (
                         <Tooltip
                             title={

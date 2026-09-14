@@ -30,6 +30,7 @@ import { DeleteModal } from "./modals/DeleteModal";
 import { useTriggerWriteConfig } from "./hooks/useTriggerWriteConfig";
 import { canHover } from "../../../utils/browser/browserUtils";
 import { TonieboxLiveControls } from "./live/TonieboxLiveControls";
+import { resolveTonieDisplayPicture, toImageSrc } from "../../tonies/common/utils/imagePathUtils";
 
 const api = new TeddyCloudApi(defaultAPIConfig());
 
@@ -278,7 +279,12 @@ export const TonieboxCard: React.FC<{
                     }
                 >
                     <img
-                        src={tonie[0].tonieInfo.picture}
+                        src={toImageSrc(
+                            resolveTonieDisplayPicture(
+                                tonie[0].customImage,
+                                tonie[0].tonieInfo.picture,
+                            ),
+                        )}
                         alt="Tonie"
                         style={{
                             position: "absolute",

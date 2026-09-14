@@ -1,11 +1,25 @@
 import React from "react";
 import { useTranslation } from "react-i18next";
-import { Button, Divider, Form, Input, Modal, Select, theme, Tooltip, Typography } from "antd";
+import {
+    Button,
+    Divider,
+    Form,
+    Image,
+    Input,
+    Modal,
+    Select,
+    Switch,
+    theme,
+    Tooltip,
+    Typography,
+    Upload,
+} from "antd";
 import {
     CloseOutlined,
     EditOutlined,
     FolderOpenOutlined,
     InfoCircleOutlined,
+    InboxOutlined,
     PlusOutlined,
     RollbackOutlined,
     SaveFilled,
@@ -18,6 +32,7 @@ import { toModelKey } from "../../utils/modelKey";
 
 const { useToken } = theme;
 const { Text } = Typography;
+const TONIE_USER_IMAGE_MAX_SIZE = 5 * 1024 * 1024;
 
 type ValidateStatus = "" | "success" | "warning" | "error" | "validating" | undefined;
 
@@ -52,6 +67,14 @@ interface EditTonieModalProps {
     onSearchModelChange: (value: string) => void;
 
     hasPendingChanges: boolean;
+
+    selectedComment: string;
+    onSelectedCommentChange: (value: string) => void;
+    customImageEnabled: boolean;
+    onCustomImageEnabledChange: (value: boolean) => void;
+    originalCustomImage: string;
+    selectedImageFile: File | null;
+    onSelectedImageFileChange: (file: File | null) => void;
 
     // File selection
     onOpenFileSelectModal: () => void;
@@ -109,6 +132,13 @@ export const EditTonieModal: React.FC<EditTonieModalProps> = ({
     keyTonieArticleSearch,
     onSearchModelChange,
     hasPendingChanges,
+    selectedComment,
+    onSelectedCommentChange,
+    customImageEnabled,
+    onCustomImageEnabledChange,
+    originalCustomImage,
+    selectedImageFile,
+    onSelectedImageFileChange,
     onOpenFileSelectModal,
     showCachePreference = false,
     selectedCachePreference = "auto",
@@ -131,6 +161,35 @@ export const EditTonieModal: React.FC<EditTonieModalProps> = ({
 }) => {
     const { t } = useTranslation();
     const { token } = useToken();
+    const [selectedImagePreview, setSelectedImagePreview] = React.useState("");
+
+    React.useEffect(() => {
+        if (!selectedImageFile) {
+            setSelectedImagePreview("");
+            return;
+        }
+        const objectUrl = URL.createObjectURL(selectedImageFile);
+        setSelectedImagePreview(objectUrl);
+        return () => URL.revokeObjectURL(objectUrl);
+    }, [selectedImageFile]);
+
+    const allowedImage = selectedImageFile
+        ? /\.(png|jpe?g|webp|gif)$/i.test(selectedImageFile.name)
+        : true;
+    const imageWithinLimit = selectedImageFile
+        ? selectedImageFile.size <= TONIE_USER_IMAGE_MAX_SIZE
+        : true;
+    const imageAvailable = Boolean(selectedImageFile || originalCustomImage);
+    const commentCharacterCount = Array.from(selectedComment).length;
+    const imageError = customImageEnabled
+        ? !imageAvailable
+            ? t("tonies.editModal.customImageRequired")
+            : !allowedImage
+              ? t("tonies.editModal.customImageInvalidFormat")
+              : !imageWithinLimit
+                ? t("tonies.editModal.customImageTooLarge")
+                : ""
+        : "";
     const handleClearSource = () => {
         onSelectedSourceChange("");
         setInputValidationSource({ validateStatus: "", help: "" });
@@ -199,7 +258,11 @@ export const EditTonieModal: React.FC<EditTonieModalProps> = ({
             onCancel={onCancel}
             title={title}
             footer={
-                <Button type="primary" onClick={onSave} disabled={!hasPendingChanges}>
+                <Button
+                    type="primary"
+                    onClick={onSave}
+                    disabled={!hasPendingChanges || Boolean(imageError)}
+                >
                     <SaveFilled key="saveClick" /> {t("tonies.editModal.save")}
                 </Button>
             }
@@ -476,6 +539,86 @@ export const EditTonieModal: React.FC<EditTonieModalProps> = ({
                     </Form.Item>
                 )}
             </div>
+
+            <Divider orientation="horizontal" titlePlacement="left">
+                {t("tonies.editModal.personalization")}
+            </Divider>
+            <Form.Item label={t("tonies.editModal.comment")}>
+                <Input
+                    value={selectedComment}
+                    suffix={`${commentCharacterCount}/255`}
+                    onChange={(event) => {
+                        if (Array.from(event.target.value).length <= 255) {
+                            onSelectedCommentChange(event.target.value);
+                        }
+                    }}
+                    placeholder={t("tonies.editModal.commentPlaceholder")}
+                />
+            </Form.Item>
+            <Form.Item label={t("tonies.editModal.customImage")}>
+                <Switch
+                    checked={customImageEnabled}
+                    onChange={(enabled) => {
+                        onCustomImageEnabledChange(enabled);
+                        if (!enabled) {
+                            onSelectedImageFileChange(null);
+                        }
+                    }}
+                />
+                <Text style={{ marginLeft: 8 }}>
+                    {customImageEnabled
+                        ? t("tonies.editModal.customImageEnabled")
+                        : t("tonies.editModal.customImageDisabled")}
+                </Text>
+            </Form.Item>
+            {customImageEnabled ? (
+                <Form.Item
+                    validateStatus={imageError ? "error" : undefined}
+                    help={imageError || t("tonies.editModal.customImageHint")}
+                >
+                    {(selectedImagePreview || originalCustomImage) && (
+                        <Image
+                            src={selectedImagePreview || originalCustomImage}
+                            alt=""
+                            height={120}
+                            style={{ objectFit: "contain", marginBottom: 8 }}
+                        />
+                    )}
+                    <Upload.Dragger
+                        accept=".png,.jpg,.jpeg,.webp,.gif"
+                        maxCount={1}
+                        beforeUpload={(file) => {
+                            onSelectedImageFileChange(file);
+                            onCustomImageEnabledChange(true);
+                            return false;
+                        }}
+                        fileList={
+                            selectedImageFile
+                                ? [
+                                      {
+                                          uid: "ruid-custom-image",
+                                          name: selectedImageFile.name,
+                                          status: "done",
+                                          size: selectedImageFile.size,
+                                          type: selectedImageFile.type,
+                                      },
+                                  ]
+                                : []
+                        }
+                        onRemove={() => {
+                            onSelectedImageFileChange(null);
+                            return true;
+                        }}
+                    >
+                        <p className="ant-upload-drag-icon">
+                            <InboxOutlined />
+                        </p>
+                        <p>{t("tonies.editModal.customImageDrop")}</p>
+                    </Upload.Dragger>
+                </Form.Item>
+            ) : originalCustomImage ? (
+                <Text type="danger">{t("tonies.editModal.customImageDeleteWarning")}</Text>
+            ) : null}
         </Modal>
     );
 };

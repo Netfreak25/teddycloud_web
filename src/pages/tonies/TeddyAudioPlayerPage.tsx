@@ -25,6 +25,7 @@ import {
     nativeCollectionToPlaybackItem,
 } from "../../utils/audio/nativeCollection";
 import { tonieToPlaybackItem } from "../../utils/audio/playbackItem";
+import { resolveTonieDisplayPicture } from "../../components/tonies/common/utils/imagePathUtils";
 
 type TeddyAudioPlayerPageProps = {
     standalone?: boolean;
@@ -154,7 +155,7 @@ export const TeddyAudioPlayerPage: React.FC<TeddyAudioPlayerPageProps> = ({
                     ? libraryPicture
                     : undefined) ||
                 assigned?.sourceInfo?.picture ||
-                assigned?.tonieInfo.picture;
+                resolveTonieDisplayPicture(assigned?.customImage, assigned?.tonieInfo.picture);
             const tracks = [
                 record.tonieInfo?.tracks,
                 assigned?.playlist?.tracks,

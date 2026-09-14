@@ -714,6 +714,33 @@ export class TeddyCloudApi extends runtime.BaseAPI {
         return response;
     }
 
+    async apiPostTonieMetadata(ruid: string, comment: string): Promise<Response> {
+        return this.apiPostTeddyCloudRaw(
+            `/api/tonie/metadata/${encodeURIComponent(ruid)}`,
+            JSON.stringify({ comment }),
+            undefined,
+            undefined,
+            { "Content-Type": "application/json" },
+        );
+    }
+
+    async apiUploadTonieImage(ruid: string, file: File): Promise<Response> {
+        const formData = new FormData();
+        formData.append("file", file, file.name);
+        const response = await this.apiPostTeddyCloudFormDataRaw(
+            `/api/tonie/image/upload/${encodeURIComponent(ruid)}`,
+            formData,
+        );
+        if (!response.ok) {
+            throw new Error(`Error: ${response.status} ${response.statusText}`);
+        }
+        return response;
+    }
+
+    async apiRemoveTonieImage(ruid: string): Promise<Response> {
+        return this.apiPostTeddyCloudRaw(`/api/tonie/image/remove/${encodeURIComponent(ruid)}`, "");
+    }
+
     /**
      * @description Post simple data to endpoint path of TeddyCloud api
      *

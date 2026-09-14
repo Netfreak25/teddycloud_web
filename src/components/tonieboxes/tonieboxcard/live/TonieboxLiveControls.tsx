@@ -43,6 +43,10 @@ import {
 import { TonieCardProps } from "../../../../types/tonieTypes";
 import { ChapterDrawer } from "./ChapterDrawer";
 import { formatPlaybackTime } from "./formatTime";
+import {
+    resolveTonieDisplayPicture,
+    toImageSrc,
+} from "../../../tonies/common/utils/imagePathUtils";
 
 const api = new TeddyCloudApi(defaultAPIConfig());
 const VOLUME_MIN = 1;
@@ -482,9 +486,14 @@ export const TonieboxLiveControls = ({
             {hasActivePlayback && (
                 <>
                     <Flex align="center" gap={12} style={{ minHeight: 64 }}>
-                        {tonie?.tonieInfo.picture ? (
+                        {tonie?.tonieInfo.picture || tonie?.customImage ? (
                             <img
-                                src={tonie.tonieInfo.picture}
+                                src={toImageSrc(
+                                    resolveTonieDisplayPicture(
+                                        tonie.customImage,
+                                        tonie.tonieInfo.picture,
+                                    ),
+                                )}
                                 alt=""
                                 style={{
                                     width: 64,

@@ -22,7 +22,7 @@ import { ffmpegSupportedExtensions } from "../../../../utils/files/ffmpegSupport
 import { TonieCardProps } from "../../../../types/tonieTypes";
 import { useTranslation } from "react-i18next";
 import { canHover } from "../../../../utils/browser/browserUtils";
-import { toImageSrc } from "../../common/utils/imagePathUtils";
+import { resolveTonieDisplayPicture, toImageSrc } from "../../common/utils/imagePathUtils";
 import ThumbnailCell from "../../common/elements/ThumbnailCell";
 import { toModelKey } from "../../utils/modelKey";
 import {
@@ -141,7 +141,11 @@ export const createColumns = (options: CreateColumnsOptions): any[] => {
 
     const getPictureSrc = (record: any): string | null => {
         if (!record) return null;
-        if (record.tonieInfo?.picture) return toImageSrc(record.tonieInfo.picture);
+        if (record.customImage || record.tonieInfo?.picture) {
+            return toImageSrc(
+                resolveTonieDisplayPicture(record.customImage, record.tonieInfo?.picture),
+            );
+        }
         if (
             special === "custom_img" &&
             !record.isDir &&
