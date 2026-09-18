@@ -19,11 +19,28 @@ export const toImageSrc = (url?: string): string => {
         (typeof import.meta !== "undefined" &&
             (import.meta as any).env?.VITE_APP_TEDDYCLOUD_API_URL) ||
         "";
-    return raw.startsWith("/") ? `${base.replace(/\/$/, "")}${raw}` : raw;
+    return base ? `${base.replace(/\/$/, "")}/${raw.replace(/^\/+/, "")}` : raw;
+};
+
+/** Unknown is a placeholder, even when returned as an absolute or cache-busted URL. */
+export const isUnknownPicture = (picture?: string): boolean => {
+    const value = picture?.trim() || "";
+    return !value || /(?:^|\/)img_unknown\.png$/i.test(value.split(/[?#]/)[0]);
 };
 
 export const resolveTonieDisplayPicture = (customImage?: string, modelPicture?: string): string =>
-    customImage?.trim() || modelPicture?.trim() || "/img_unknown.png";
+    [customImage, modelPicture].find((picture) => !isUnknownPicture(picture))?.trim() ||
+    "/img_unknown.png";
+
+/** Content artwork stays separate from the physical tag's custom/model image. */
+export const resolveContentDisplayPicture = (
+    contentPicture?: string,
+    customImage?: string,
+    modelPicture?: string,
+): string =>
+    !isUnknownPicture(contentPicture)
+        ? contentPicture!.trim()
+        : resolveTonieDisplayPicture(customImage, modelPicture);
 
 export const toCustomImgWebPath = (path: string, fileName: string): string => {
     const normalizedPath = normalizeDirPath(path);

@@ -8,6 +8,10 @@ import { Record } from "../types/fileBrowserTypes";
 import { TonieCardProps } from "../types/tonieTypes";
 import { supportsOggOpus } from "../utils/browser/browserUtils";
 import { AudioPlaybackItem } from "../types/audioPlaybackTypes";
+import {
+    resolveContentDisplayPicture,
+    toImageSrc,
+} from "../components/tonies/common/utils/imagePathUtils";
 
 type TonieCardTAFRecord = TonieCardProps | Record;
 
@@ -96,6 +100,7 @@ export const AudioProvider: React.FC<AudioProviderProps> = ({ children }) => {
 
     const playPlaybackItem = useCallback(
         (item: AudioPlaybackItem, trackIndex = 0, position = 0) => {
+            item = { ...item, picture: toImageSrc(item.picture) };
             const track = item.tracks[trackIndex] || {
                 sourceIndex: 0,
                 startSeconds: 0,
@@ -225,8 +230,23 @@ export const AudioProvider: React.FC<AudioProviderProps> = ({ children }) => {
                 sourceElement.src = url.replace("+", "%2B").replace("#", "%23");
                 globalAudio.load();
             }
+            const tag =
+                tonieCardOrTAFRecord && "ruid" in tonieCardOrTAFRecord
+                    ? tonieCardOrTAFRecord
+                    : undefined;
+            const picture = toImageSrc(
+                meta || tag
+                    ? resolveContentDisplayPicture(
+                          meta?.picture,
+                          tag?.customImage,
+                          tag?.tonieInfo.picture,
+                      )
+                    : decodeURI(url).includes(".taf?")
+                      ? "/img_unknown.png"
+                      : logoImg,
+            );
+            setSongImage(picture);
             if (meta) {
-                setSongImage(meta.picture);
                 setSongArtist(
                     meta.series || meta.episode
                         ? meta.series
@@ -236,7 +256,6 @@ export const AudioProvider: React.FC<AudioProviderProps> = ({ children }) => {
                 );
                 setSongTitle(meta.episode);
             } else {
-                setSongImage(decodeURI(url).includes(".taf?") ? "/img_unknown.png" : logoImg);
                 setSongArtist("");
                 setSongTitle(extractFilename(decodeURI(url)));
             }
@@ -277,9 +296,7 @@ export const AudioProvider: React.FC<AudioProviderProps> = ({ children }) => {
                 kind: "single_file",
                 title,
                 subtitle,
-                picture:
-                    meta?.picture ||
-                    (decodeURI(url).includes(".taf?") ? "/img_unknown.png" : logoImg),
+                picture,
                 sources: [{ url, title }],
                 tracks: starts.map((start, index) => ({
                     title: trackTitles[index] || `Chapter ${index + 1}`,

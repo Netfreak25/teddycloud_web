@@ -5,6 +5,7 @@ import {
     TonieplayCollectionSummary,
 } from "../../types/fileBrowserTypes";
 import { AudioPlaybackItem } from "../../types/audioPlaybackTypes";
+import { toImageSrc } from "../../components/tonies/common/utils/imagePathUtils";
 
 const apiBase = () => import.meta.env.VITE_APP_TEDDYCLOUD_API_URL || "";
 
@@ -95,6 +96,7 @@ export const nativeCollectionToPlaybackItem = (
         title?: string;
         subtitle?: string;
         picture?: string;
+        tonieRuid?: string;
         tracks?: string[];
         fallbackTrackTitle?: (number: number) => string;
     },
@@ -116,7 +118,8 @@ export const nativeCollectionToPlaybackItem = (
         kind: "tb2_native_collection",
         title: metadata?.title || `TB2 ${collection.contentHash.slice(0, 12)}`,
         subtitle: metadata?.subtitle || "Ogg/Opus",
-        picture: metadata?.picture || "/img_unknown.png",
+        picture: toImageSrc(metadata?.picture || "/img_unknown.png"),
+        tonieRuid: metadata?.tonieRuid,
         sources: collection.chapters.map((chapter, index) => ({
             url: buildLibraryFileUrl(chapter.path, overlay),
             title: trackTitles[index],

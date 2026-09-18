@@ -26,7 +26,11 @@ import { SelectAudioModal } from "../common/modals/SelectAudioModal";
 import { useAudioContext } from "../../../provider/AudioProvider";
 import { CustomModelEditor } from "../custommodel/CustomModelEditor";
 import { toModelKey, useCustomModelKeys } from "../hooks/useCustomModelKeys";
-import { resolveTonieDisplayPicture, toImageSrc } from "../common/utils/imagePathUtils";
+import {
+    resolveContentDisplayPicture,
+    resolveTonieDisplayPicture,
+    toImageSrc,
+} from "../common/utils/imagePathUtils";
 import { useTonieCardActions } from "./hooks/useTonieCardActions";
 import { useResolvedModelAudio } from "./hooks/useResolvedModelAudio";
 import { useTooltipInfoByModel } from "./hooks/useTooltipInfoByModel";
@@ -195,6 +199,11 @@ export const TonieCard: React.FC<{
         .map(([, ruidTime, boxName]) => ({ ruidTime, boxName }));
 
     const picture = resolveTonieDisplayPicture(tonieCard.customImage, tonieCard.tonieInfo.picture);
+    const contentPicture = resolveContentDisplayPicture(
+        tonieCard.sourceInfo?.picture,
+        tonieCard.customImage,
+        tonieCard.tonieInfo.picture,
+    );
     const pictureLooksUnknown = picture.endsWith("img_unknown.png");
 
     const hasPendingChanges =
@@ -271,7 +280,8 @@ export const TonieCard: React.FC<{
                             tonieCard.sourceInfo?.series ||
                             tonieCard.tonieInfo.series,
                         subtitle: tonieCard.sourceInfo?.episode || tonieCard.tonieInfo.episode,
-                        picture: tonieCard.sourceInfo?.picture || picture,
+                        picture: contentPicture,
+                        tonieRuid: tonieCard.ruid,
                         tracks: [
                             tonieCard.playlist?.tracks,
                             tonieCard.sourceInfo?.tracks,
@@ -300,7 +310,10 @@ export const TonieCard: React.FC<{
             : tonieCard.source;
         playAudio(
             url,
-            showSourceInfoPicture ? tonieCard.sourceInfo : { ...tonieCard.tonieInfo, picture },
+            {
+                ...(showSourceInfoPicture ? tonieCard.sourceInfo : tonieCard.tonieInfo),
+                picture: contentPicture,
+            },
             tonieCard,
         );
     };
@@ -664,7 +677,7 @@ export const TonieCard: React.FC<{
                                 placement="bottom"
                             >
                                 <img
-                                    src={toImageSrc(tonieCard.sourceInfo.picture)}
+                                    src={toImageSrc(contentPicture)}
                                     alt=""
                                     style={{
                                         bottom: 0,

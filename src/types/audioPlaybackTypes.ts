@@ -20,6 +20,8 @@ export interface AudioPlaybackItem {
     title: string;
     subtitle: string;
     picture: string;
+    /** Physical tag context only; never inferred from a shared collection's first assignment. */
+    tonieRuid?: string;
     sources: AudioPlaybackSource[];
     tracks: AudioPlaybackTrack[];
     searchText?: string;

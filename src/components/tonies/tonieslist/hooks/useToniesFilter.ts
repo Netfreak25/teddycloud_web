@@ -8,6 +8,7 @@ import type {
     ToniesFilterState,
 } from "../../../../types/toniesFilterTypes";
 import { toModelKey } from "../../utils/modelKey";
+import { resolveTonieDisplayPicture } from "../../common/utils/imagePathUtils";
 
 const STORAGE_KEY_FILTERS = "tonieFilters";
 
@@ -30,7 +31,7 @@ const FIELD_ACCESSORS: FIELD_ACCESSOR_MAP = {
     episode: (t) => t.sourceInfo?.episode || t.tonieInfo.episode || "",
     model: (t) => t.sourceInfo?.model || t.tonieInfo.model || "",
     language: (t) => t.sourceInfo?.language || t.tonieInfo.language || "",
-    picture: (t) => t.sourceInfo?.picture || t.customImage || t.tonieInfo.picture || "",
+    picture: (t) => resolveTonieDisplayPicture(t.customImage, t.tonieInfo.picture),
     exists: (t) => t.exists,
     valid: (t) => t.valid,
     live: (t) => t.live,

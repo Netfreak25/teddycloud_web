@@ -25,7 +25,7 @@ import {
     nativeCollectionToPlaybackItem,
 } from "../../utils/audio/nativeCollection";
 import { tonieToPlaybackItem } from "../../utils/audio/playbackItem";
-import { resolveTonieDisplayPicture } from "../../components/tonies/common/utils/imagePathUtils";
+import { resolveContentDisplayPicture } from "../../components/tonies/common/utils/imagePathUtils";
 
 type TeddyAudioPlayerPageProps = {
     standalone?: boolean;
@@ -61,6 +61,7 @@ export const TeddyAudioPlayerPage: React.FC<TeddyAudioPlayerPageProps> = ({
             const params = new URLSearchParams();
             if (currentItem.kind === "tb2_native_collection") {
                 params.set("contentHash", currentItem.id);
+                if (currentItem.tonieRuid) params.set("ruid", currentItem.tonieRuid);
                 params.set("chapter", currentChapter.toString());
             } else {
                 params.set("ruid", currentItem.id);
@@ -140,6 +141,14 @@ export const TeddyAudioPlayerPage: React.FC<TeddyAudioPlayerPageProps> = ({
             const collection = record.nativeCollection!;
             const source = `lib://by/contentHash/${collection.contentHash}/library-entry.json`;
             const assigned = tonies.find((tonie) => tonie.source === source);
+            // Title fallback is unchanged. A personal image requires an explicit tag context.
+            const imageTag = tonieRuid
+                ? tonies.find(
+                      (tonie) =>
+                          tonie.ruid.toUpperCase() === tonieRuid.toUpperCase() &&
+                          tonie.source === source,
+                  )
+                : undefined;
             const title =
                 record.tonieInfo?.series ||
                 assigned?.playlist?.title ||
@@ -149,13 +158,15 @@ export const TeddyAudioPlayerPage: React.FC<TeddyAudioPlayerPageProps> = ({
                 record.tonieInfo?.episode ||
                 assigned?.sourceInfo?.episode ||
                 assigned?.tonieInfo.episode;
-            const libraryPicture = record.tonieInfo?.picture;
-            const picture =
-                (libraryPicture && !libraryPicture.endsWith("img_unknown.png")
-                    ? libraryPicture
-                    : undefined) ||
-                assigned?.sourceInfo?.picture ||
-                resolveTonieDisplayPicture(assigned?.customImage, assigned?.tonieInfo.picture);
+            const picture = resolveContentDisplayPicture(
+                resolveContentDisplayPicture(
+                    record.tonieInfo?.picture,
+                    undefined,
+                    imageTag?.sourceInfo?.picture,
+                ),
+                imageTag?.customImage,
+                imageTag?.tonieInfo.picture,
+            );
             const tracks = [
                 record.tonieInfo?.tracks,
                 assigned?.playlist?.tracks,
@@ -170,6 +181,7 @@ export const TeddyAudioPlayerPage: React.FC<TeddyAudioPlayerPageProps> = ({
                 title,
                 subtitle,
                 picture,
+                tonieRuid: imageTag?.ruid,
                 tracks,
                 fallbackTrackTitle: (number) => t("tonieboxes.live.chapter", { number }),
             });
@@ -181,7 +193,7 @@ export const TeddyAudioPlayerPage: React.FC<TeddyAudioPlayerPageProps> = ({
             seen.add(key);
             return true;
         });
-    }, [nativeRecords, overlay, playableTonieCards, tonies]);
+    }, [nativeRecords, overlay, playableTonieCards, tonies, tonieRuid]);
 
     useEffect(() => {
         const item = contentHash
@@ -189,7 +201,9 @@ export const TeddyAudioPlayerPage: React.FC<TeddyAudioPlayerPageProps> = ({
                   (candidate) =>
                       candidate.kind === "tb2_native_collection" && candidate.id === contentHash,
               )
-            : playbackItems.find((candidate) => candidate.id === tonieRuid);
+            : playbackItems.find(
+                  (candidate) => candidate.id === tonieRuid || candidate.tonieRuid === tonieRuid,
+              );
         if (item) {
             setCurrentItem(item);
             setCurrentPlayPosition(startPosition);

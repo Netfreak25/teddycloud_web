@@ -14,7 +14,11 @@ import ConfirmationDialog from "../../../common/modals/ConfirmationModal";
 import { useTeddyCloud } from "../../../../provider/TeddyCloudProvider";
 import { NotificationTypeEnum } from "../../../../types/teddyCloudNotificationTypes";
 import { useAudioContext } from "../../../../provider/AudioProvider";
-import { resolveTonieDisplayPicture, toImageSrc } from "../utils/imagePathUtils";
+import {
+    resolveContentDisplayPicture,
+    resolveTonieDisplayPicture,
+    toImageSrc,
+} from "../utils/imagePathUtils";
 
 const api = new TeddyCloudApi(defaultAPIConfig());
 
@@ -61,6 +65,11 @@ const TonieInformationModal: React.FC<InformationModalProps> = ({
         "customImage" in tonieCardOrTAFRecord ? tonieCardOrTAFRecord.customImage : undefined,
         tonieCardOrTAFRecord.tonieInfo.picture,
     );
+    const contentPicture = resolveContentDisplayPicture(
+        "sourceInfo" in tonieCardOrTAFRecord ? tonieCardOrTAFRecord.sourceInfo?.picture : undefined,
+        "customImage" in tonieCardOrTAFRecord ? tonieCardOrTAFRecord.customImage : undefined,
+        tonieCardOrTAFRecord.tonieInfo.picture,
+    );
 
     useEffect(() => {
         if (
@@ -78,7 +87,7 @@ const TonieInformationModal: React.FC<InformationModalProps> = ({
                     tonieCardOrTAFRecord.tonieInfo.tracks.join("."))
         ) {
             setInformationFromSource(true);
-            setSourcePic(tonieCardOrTAFRecord.sourceInfo.picture);
+            setSourcePic(contentPicture);
             setSourceTracks(tonieCardOrTAFRecord.sourceInfo.tracks);
         }
         // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -88,8 +97,8 @@ const TonieInformationModal: React.FC<InformationModalProps> = ({
         playAudio(
             url,
             showSourceInfo && "sourceInfo" in tonieCardOrTAFRecord
-                ? tonieCardOrTAFRecord.sourceInfo
-                : { ...tonieCardOrTAFRecord.tonieInfo, picture: modelPicture },
+                ? { ...tonieCardOrTAFRecord.sourceInfo, picture: contentPicture }
+                : { ...tonieCardOrTAFRecord.tonieInfo, picture: contentPicture },
             tonieCardOrTAFRecord,
             startTime,
         );

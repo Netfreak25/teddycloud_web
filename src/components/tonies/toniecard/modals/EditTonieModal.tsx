@@ -29,10 +29,13 @@ import {
 import { ToniesJsonSearch } from "../../common/searches/ToniesJsonSearch";
 import { RadioStreamSearch } from "../search/RadioStreamSearch";
 import { toModelKey } from "../../utils/modelKey";
+import {
+    prepareTonieImage,
+    TONIE_USER_IMAGE_MAX_SIZE,
+} from "../../../../utils/images/prepareTonieImage";
 
 const { useToken } = theme;
 const { Text } = Typography;
-const TONIE_USER_IMAGE_MAX_SIZE = 5 * 1024 * 1024;
 
 type ValidateStatus = "" | "success" | "warning" | "error" | "validating" | undefined;
 
@@ -162,6 +165,48 @@ export const EditTonieModal: React.FC<EditTonieModalProps> = ({
     const { t } = useTranslation();
     const { token } = useToken();
     const [selectedImagePreview, setSelectedImagePreview] = React.useState("");
+    const [imageProcessing, setImageProcessing] = React.useState(false);
+    const [imageProcessingError, setImageProcessingError] = React.useState("");
+    const imageSelection = React.useRef(0);
+
+    React.useEffect(() => {
+        imageSelection.current++;
+        setImageProcessing(false);
+        setImageProcessingError("");
+        return () => {
+            imageSelection.current++;
+        };
+    }, [open]);
+
+    const selectImage = async (file: File) => {
+        const selection = ++imageSelection.current;
+        onCustomImageEnabledChange(true);
+        onSelectedImageFileChange(null);
+        setImageProcessing(true);
+        setImageProcessingError("");
+        try {
+            const prepared = await prepareTonieImage(file);
+            if (selection === imageSelection.current) onSelectedImageFileChange(prepared);
+        } catch (error) {
+            if (selection === imageSelection.current) {
+                const message = error instanceof Error ? error.message : "";
+                setImageProcessingError(
+                    message.startsWith("tonies.editModal.")
+                        ? message
+                        : "tonies.editModal.customImageProcessingFailed",
+                );
+            }
+        } finally {
+            if (selection === imageSelection.current) setImageProcessing(false);
+        }
+    };
+
+    const clearImageSelection = () => {
+        imageSelection.current++;
+        setImageProcessing(false);
+        setImageProcessingError("");
+        onSelectedImageFileChange(null);
+    };
 
     React.useEffect(() => {
         if (!selectedImageFile) {
@@ -182,13 +227,15 @@ export const EditTonieModal: React.FC<EditTonieModalProps> = ({
     const imageAvailable = Boolean(selectedImageFile || originalCustomImage);
     const commentCharacterCount = Array.from(selectedComment).length;
     const imageError = customImageEnabled
-        ? !imageAvailable
-            ? t("tonies.editModal.customImageRequired")
-            : !allowedImage
-              ? t("tonies.editModal.customImageInvalidFormat")
-              : !imageWithinLimit
-                ? t("tonies.editModal.customImageTooLarge")
-                : ""
+        ? imageProcessingError
+            ? t(imageProcessingError)
+            : !imageAvailable
+              ? t("tonies.editModal.customImageRequired")
+              : !allowedImage
+                ? t("tonies.editModal.customImageInvalidFormat")
+                : !imageWithinLimit
+                  ? t("tonies.editModal.customImageTooLarge")
+                  : ""
         : "";
     const handleClearSource = () => {
         onSelectedSourceChange("");
@@ -261,7 +308,7 @@ export const EditTonieModal: React.FC<EditTonieModalProps> = ({
                 <Button
                     type="primary"
                     onClick={onSave}
-                    disabled={!hasPendingChanges || Boolean(imageError)}
+                    disabled={!hasPendingChanges || Boolean(imageError) || imageProcessing}
                 >
                     <SaveFilled key="saveClick" /> {t("tonies.editModal.save")}
                 </Button>
@@ -561,7 +608,7 @@ export const EditTonieModal: React.FC<EditTonieModalProps> = ({
                     onChange={(enabled) => {
                         onCustomImageEnabledChange(enabled);
                         if (!enabled) {
-                            onSelectedImageFileChange(null);
+                            clearImageSelection();
                         }
                     }}
                 />
@@ -588,8 +635,7 @@ export const EditTonieModal: React.FC<EditTonieModalProps> = ({
                         accept=".png,.jpg,.jpeg,.webp,.gif"
                         maxCount={1}
                         beforeUpload={(file) => {
-                            onSelectedImageFileChange(file);
-                            onCustomImageEnabledChange(true);
+                            void selectImage(file);
                             return false;
                         }}
                         fileList={
@@ -606,7 +652,7 @@ export const EditTonieModal: React.FC<EditTonieModalProps> = ({
                                 : []
                         }
                         onRemove={() => {
-                            onSelectedImageFileChange(null);
+                            clearImageSelection();
                             return true;
                         }}
                     >
