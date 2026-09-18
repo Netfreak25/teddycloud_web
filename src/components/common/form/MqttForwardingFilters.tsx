@@ -22,6 +22,9 @@ import {
 import { type CSSProperties, useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import SettingsDataHandler, { Setting } from "../../../data/SettingsDataHandler";
+import { SettingsOptionItem } from "./SettingsOptionItem";
+
+export const MQTT_FILTERS_ENABLED = "mqtt_client_upstream.filters_enabled";
 
 const FILTER_PREFIX = "mqtt_client_upstream.forward.";
 
@@ -166,6 +169,7 @@ export const MqttForwardingFilters: React.FC<Props> = ({ optionIds, overlayId })
     const suppressedCount = settings.filter((setting) => setting.value !== true).length;
     const mobileSetting = mobileSettingId ? handler.getSetting(mobileSettingId) : undefined;
     const hasOverrides = settings.some((setting) => setting.overlayed && !setting.readOnly);
+    const filtersEnabled = handler.getSetting(MQTT_FILTERS_ENABLED)?.value !== false;
 
     // Reset the whole filter section, including rules hidden by search/group filters.
     // The existing save flow removes these overlays; global settings are never changed.
@@ -361,14 +365,14 @@ export const MqttForwardingFilters: React.FC<Props> = ({ optionIds, overlayId })
                         <Tooltip title={t("settings.mqttForwarding.overrideHint")}>
                             <Space size={6}>
                                 <label htmlFor={`mqtt-override-${setting.iD}`}>
-                                    {t("settings.mqttForwarding.useOverride")}
+                                    {t("settings.overlayed")}
                                 </label>
                                 <Switch
                                     id={`mqtt-override-${setting.iD}`}
                                     size="small"
                                     checked={setting.overlayed === true}
                                     disabled={setting.readOnly}
-                                    aria-label={`${settingText.label}: ${t("settings.mqttForwarding.useOverride")}`}
+                                    aria-label={`${settingText.label}: ${t("settings.overlayed")}`}
                                     onChange={(checked) =>
                                         handler.changeSettingOverlayed(setting.iD, checked)
                                     }
@@ -482,6 +486,15 @@ export const MqttForwardingFilters: React.FC<Props> = ({ optionIds, overlayId })
                         ),
                         children: (
                             <Space direction="vertical" size={12} style={{ width: "100%" }}>
+                                {overlayId === undefined &&
+                                    handler.getSetting(MQTT_FILTERS_ENABLED) && (
+                                        <SettingsOptionItem iD={MQTT_FILTERS_ENABLED} noOverlay />
+                                    )}
+                                {!filtersEnabled && (
+                                    <Typography.Text type="warning">
+                                        {t("settings.mqttForwarding.disabledGlobally")}
+                                    </Typography.Text>
+                                )}
                                 <Typography.Text type="secondary">
                                     {t("settings.mqttForwarding.description")}
                                 </Typography.Text>

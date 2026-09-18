@@ -2,7 +2,7 @@ import { Divider, Tabs, Typography } from "antd";
 import { useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import SettingsDataHandler from "../../../data/SettingsDataHandler";
-import { MqttForwardingFilters } from "./MqttForwardingFilters";
+import { MqttForwardingFilters, MQTT_FILTERS_ENABLED } from "./MqttForwardingFilters";
 import { SettingsOptionItem } from "./SettingsOptionItem";
 import {
     BoxGeneration,
@@ -99,8 +99,10 @@ export const SettingsScopeTabs: React.FC<Props> = ({ optionIds, overlayId, boxGe
             if (rightIndex === -1) return -1;
             return leftIndex - rightIndex;
         });
-        const mqttForwardingIds = orderedIds.filter((id) => id.startsWith(MQTT_FORWARD_PREFIX));
-        const standardIds = orderedIds.filter((id) => !id.startsWith(MQTT_FORWARD_PREFIX));
+        const isMqttFilter = (id: string) =>
+            id.startsWith(MQTT_FORWARD_PREFIX) || id === MQTT_FILTERS_ENABLED;
+        const mqttForwardingIds = orderedIds.filter(isMqttFilter);
+        const standardIds = orderedIds.filter((id) => !isMqttFilter(id));
         const renderedDependencies = new Set<string>();
 
         return (
