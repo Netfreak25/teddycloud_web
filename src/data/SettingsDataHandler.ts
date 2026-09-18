@@ -312,6 +312,14 @@ export default class SettingsDataHandler {
                         api.apiGetTeddyCloudSettingRaw(iD)
                             .then((response) => response.text())
                             .then((fieldValue) => {
+                                // A delayed global read must not replace a newly enabled
+                                // override or data from another box/dialog.
+                                if (
+                                    this.getSetting(iD) !== settingToChange ||
+                                    settingToChange.overlayed !== false
+                                ) {
+                                    return;
+                                }
                                 let typedFieldValue: boolean | number | string;
 
                                 if (settingToChange.type === "bool") {

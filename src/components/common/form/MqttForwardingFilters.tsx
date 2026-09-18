@@ -1,4 +1,10 @@
-import { ArrowRightOutlined, CheckOutlined, GlobalOutlined, StopOutlined } from "@ant-design/icons";
+import {
+    ArrowRightOutlined,
+    CheckOutlined,
+    GlobalOutlined,
+    StopOutlined,
+    UndoOutlined,
+} from "@ant-design/icons";
 import {
     Button,
     Collapse,
@@ -8,6 +14,7 @@ import {
     Grid,
     Input,
     Space,
+    Switch,
     Tooltip,
     Typography,
     theme,
@@ -158,6 +165,18 @@ export const MqttForwardingFilters: React.FC<Props> = ({ optionIds, overlayId })
         : expandedGroups;
     const suppressedCount = settings.filter((setting) => setting.value !== true).length;
     const mobileSetting = mobileSettingId ? handler.getSetting(mobileSettingId) : undefined;
+    const hasOverrides = settings.some((setting) => setting.overlayed && !setting.readOnly);
+
+    // Reset the whole filter section, including rules hidden by search/group filters.
+    // The existing save flow removes these overlays; global settings are never changed.
+    const resetOverrides = () => {
+        settings
+            .filter((setting) => setting.overlayed && !setting.readOnly)
+            .forEach((setting) => {
+                handler.changeSettingOverlayed(setting.iD, false);
+            });
+        setMobileSettingId(undefined);
+    };
 
     const changeGlobal = (setting: Setting, forward: boolean) => {
         handler.changeSetting(setting.iD, forward, undefined);
@@ -175,6 +194,7 @@ export const MqttForwardingFilters: React.FC<Props> = ({ optionIds, overlayId })
     };
 
     const changeMode = (setting: Setting, mode: ForwardingMode) => {
+        if (setting.readOnly) return;
         if (overlayId === undefined) {
             changeGlobal(setting, mode === "forward");
         } else {
@@ -267,6 +287,7 @@ export const MqttForwardingFilters: React.FC<Props> = ({ optionIds, overlayId })
         const button = (
             <Button
                 size="small"
+                disabled={setting.readOnly || (overlayId !== undefined && !setting.overlayed)}
                 icon={getModeIcon(mode)}
                 aria-label={t("settings.mqttForwarding.selectStatus", {
                     setting: getSettingText(setting).label,
@@ -296,6 +317,7 @@ export const MqttForwardingFilters: React.FC<Props> = ({ optionIds, overlayId })
         if (isMobile) return button;
         return (
             <Dropdown
+                disabled={setting.readOnly || (overlayId !== undefined && !setting.overlayed)}
                 trigger={["click"]}
                 placement="bottomRight"
                 menu={{
@@ -333,7 +355,28 @@ export const MqttForwardingFilters: React.FC<Props> = ({ optionIds, overlayId })
                         {settingText.label}
                     </Typography.Text>
                 </Tooltip>
-                {renderStatusButton(setting)}
+                <Space orientation="vertical" size={4} align="end" style={{ flexShrink: 0 }}>
+                    {renderStatusButton(setting)}
+                    {overlayId !== undefined && (
+                        <Tooltip title={t("settings.mqttForwarding.overrideHint")}>
+                            <Space size={6}>
+                                <label htmlFor={`mqtt-override-${setting.iD}`}>
+                                    {t("settings.mqttForwarding.useOverride")}
+                                </label>
+                                <Switch
+                                    id={`mqtt-override-${setting.iD}`}
+                                    size="small"
+                                    checked={setting.overlayed === true}
+                                    disabled={setting.readOnly}
+                                    aria-label={`${settingText.label}: ${t("settings.mqttForwarding.useOverride")}`}
+                                    onChange={(checked) =>
+                                        handler.changeSettingOverlayed(setting.iD, checked)
+                                    }
+                                />
+                            </Space>
+                        </Tooltip>
+                    )}
+                </Space>
             </div>
         );
     };
@@ -442,6 +485,17 @@ export const MqttForwardingFilters: React.FC<Props> = ({ optionIds, overlayId })
                                 <Typography.Text type="secondary">
                                     {t("settings.mqttForwarding.description")}
                                 </Typography.Text>
+                                {overlayId !== undefined && (
+                                    <Tooltip title={t("settings.mqttForwarding.resetToGlobalHint")}>
+                                        <Button
+                                            icon={<UndoOutlined />}
+                                            disabled={!hasOverrides}
+                                            onClick={resetOverrides}
+                                        >
+                                            {t("settings.mqttForwarding.resetToGlobal")}
+                                        </Button>
+                                    </Tooltip>
+                                )}
                                 <div
                                     style={{
                                         display: "flex",
