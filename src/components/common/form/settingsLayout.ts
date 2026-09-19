@@ -10,6 +10,7 @@ export type SettingsLayoutSection = {
     ids?: string[];
     prefixes?: string[];
     order?: string[];
+    otaHelpGeneration?: Exclude<SettingScope, "global">;
 };
 
 type SettingDependency = {

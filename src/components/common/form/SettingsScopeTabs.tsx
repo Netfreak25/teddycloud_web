@@ -3,6 +3,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import SettingsDataHandler from "../../../data/SettingsDataHandler";
 import { MqttForwardingFilters, MQTT_FILTERS_ENABLED } from "./MqttForwardingFilters";
+import { OtaSettingsHelp } from "./OtaSettingsHelp";
 import { SettingsOptionItem } from "./SettingsOptionItem";
 import { getTb2SettingAccess } from "../../../utils/tb2SettingsAuthority";
 import {
@@ -147,6 +148,9 @@ export const SettingsScopeTabs: React.FC<Props> = ({ optionIds, overlayId, boxGe
                 })}
                 {mqttForwardingIds.length > 0 && (
                     <MqttForwardingFilters optionIds={mqttForwardingIds} overlayId={overlayId} />
+                )}
+                {section?.otaHelpGeneration && (
+                    <OtaSettingsHelp generation={section.otaHelpGeneration} />
                 )}
             </section>
         );

@@ -80,8 +80,6 @@
             "scope": "global",
             "labelKey": "settings.scopeSections.bothGenerations",
             "ids": [
-                "cloud.cacheOta",
-                "cloud.localOta",
                 "cloud.markCustomTagByPass",
                 "cloud.markCustomTagByUid",
                 "cloud.dumpRuidAuthContentJson"
@@ -143,9 +141,16 @@
                 "cloud.enableV1FreshnessCheck",
                 "cloud.enableV1Log",
                 "cloud.enableV1Time",
-                "cloud.enableV1Ota",
                 "cloud.enableV2Content"
             ]
+        },
+        {
+            "id": "tb1.ota",
+            "scope": "tb1",
+            "labelKey": "settings.scopeSections.firmwareUpdates",
+            "ids": ["cloud.enableV1Ota", "cloud.cacheOtaV1", "cloud.localOtaV1"],
+            "order": ["cloud.enableV1Ota", "cloud.cacheOtaV1", "cloud.localOtaV1"],
+            "otaHelpGeneration": "tb1"
         },
         {
             "id": "tb1.box",
@@ -189,7 +194,6 @@
             "ids": [
                 "cloud.tb2_v3_enabled",
                 "cloud.enableV3FreshnessCheck",
-                "cloud.enableV3Ota",
                 "cloud.enableV3SetupStatus",
                 "cloud.enableV3ContentMeta",
                 "cloud.enableV3Chapter",
@@ -202,7 +206,6 @@
             "order": [
                 "cloud.tb2_v3_enabled",
                 "cloud.enableV3FreshnessCheck",
-                "cloud.enableV3Ota",
                 "cloud.enableV3SetupStatus",
                 "cloud.enableV3ContentMeta",
                 "cloud.enableV3Chapter",
@@ -212,6 +215,14 @@
                 "cloud.remote_hostname_tb2",
                 "cloud.remote_port_tb2"
             ]
+        },
+        {
+            "id": "tb2.ota",
+            "scope": "tb2",
+            "labelKey": "settings.scopeSections.firmwareUpdates",
+            "ids": ["cloud.enableV3Ota", "cloud.cacheOtaV3", "cloud.localOtaV3"],
+            "order": ["cloud.enableV3Ota", "cloud.cacheOtaV3", "cloud.localOtaV3"],
+            "otaHelpGeneration": "tb2"
         },
         {
             "id": "tb2.mqttUpstream",
@@ -258,7 +269,6 @@
             "hideWhenDisabled": true,
             "dependents": [
                 "cloud.enableV3FreshnessCheck",
-                "cloud.enableV3Ota",
                 "cloud.enableV3SetupStatus",
                 "cloud.enableV3ContentMeta",
                 "cloud.enableV3Chapter"
