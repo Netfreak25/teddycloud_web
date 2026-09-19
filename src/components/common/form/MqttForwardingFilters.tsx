@@ -32,6 +32,7 @@ const FILTER_PREFIX = "mqtt_client_upstream.forward.";
 type FilterGroup = {
     key: string;
     labelKey: string;
+    descriptionKey: string;
     matches: (id: string) => boolean;
 };
 
@@ -40,34 +41,46 @@ type ForwardingMode = "global" | "forward" | "suppress";
 
 const groups: FilterGroup[] = [
     {
-        key: "logs",
-        labelKey: "settings.mqttForwarding.groups.logs",
-        matches: (id) => id.startsWith(`${FILTER_PREFIX}logs.`),
-    },
-    {
-        key: "metrics",
-        labelKey: "settings.mqttForwarding.groups.metrics",
-        matches: (id) => id.startsWith(`${FILTER_PREFIX}metrics.`),
-    },
-    {
-        key: "app-reply",
-        labelKey: "settings.mqttForwarding.groups.appReply",
-        matches: (id) => id.startsWith(`${FILTER_PREFIX}app_reply.`),
+        key: "registration",
+        labelKey: "settings.mqttForwarding.groups.registration",
+        descriptionKey: "settings.mqttForwarding.groupDescriptions.registration",
+        matches: (id) => id === `${FILTER_PREFIX}claim` || id === `${FILTER_PREFIX}fresh_tonies`,
     },
     {
         key: "settings",
         labelKey: "settings.mqttForwarding.groups.settings",
+        descriptionKey: "settings.mqttForwarding.groupDescriptions.settings",
         matches: (id) => id.startsWith(`${FILTER_PREFIX}settings.`),
-    },
-    {
-        key: "playback",
-        labelKey: "settings.mqttForwarding.groups.playback",
-        matches: (id) => id.startsWith(`${FILTER_PREFIX}playback.`),
     },
     {
         key: "app-control",
         labelKey: "settings.mqttForwarding.groups.appControl",
-        matches: (id) => id.startsWith(`${FILTER_PREFIX}app_control.`),
+        descriptionKey: "settings.mqttForwarding.groupDescriptions.appControl",
+        matches: (id) =>
+            id.startsWith(`${FILTER_PREFIX}app_control.`) ||
+            id.startsWith(`${FILTER_PREFIX}app_reply.`),
+    },
+    {
+        key: "telemetry",
+        labelKey: "settings.mqttForwarding.groups.telemetry",
+        descriptionKey: "settings.mqttForwarding.groupDescriptions.telemetry",
+        matches: (id) =>
+            id.startsWith(`${FILTER_PREFIX}playback.`) ||
+            id.startsWith(`${FILTER_PREFIX}metrics.`) ||
+            id === `${FILTER_PREFIX}volume` ||
+            id === `${FILTER_PREFIX}bi_events`,
+    },
+    {
+        key: "diagnostics",
+        labelKey: "settings.mqttForwarding.groups.diagnostics",
+        descriptionKey: "settings.mqttForwarding.groupDescriptions.diagnostics",
+        matches: (id) => id.startsWith(`${FILTER_PREFIX}logs.`),
+    },
+    {
+        key: "setup-other",
+        labelKey: "settings.mqttForwarding.groups.setupOther",
+        descriptionKey: "settings.mqttForwarding.groupDescriptions.setupOther",
+        matches: (id) => id === `${FILTER_PREFIX}setup` || id === `${FILTER_PREFIX}other`,
     },
 ];
 
@@ -82,7 +95,7 @@ export const MqttForwardingFilters: React.FC<Props> = ({ optionIds, overlayId })
     const [, setRevision] = useState(0);
     const [search, setSearch] = useState("");
     const [displayFilter, setDisplayFilter] = useState<DisplayFilter>("all");
-    const [expandedGroups, setExpandedGroups] = useState<string[]>(["direct"]);
+    const [expandedGroups, setExpandedGroups] = useState<string[]>(["registration"]);
     const [mobileSettingId, setMobileSettingId] = useState<string>();
     const handler = SettingsDataHandler.getInstance();
     const screens = Grid.useBreakpoint();
@@ -129,19 +142,16 @@ export const MqttForwardingFilters: React.FC<Props> = ({ optionIds, overlayId })
             settings.filter((setting) => group.matches(setting.iD)).map((setting) => setting.iD),
         ),
     );
-    const directSettings = settings.filter((setting) => !groupedIds.has(setting.iD));
-    const allGroups = [
-        {
-            key: "direct",
-            labelKey: "settings.mqttForwarding.groups.direct",
-            settings: directSettings,
-        },
-        ...groups.map((group) => ({
-            key: group.key,
-            labelKey: group.labelKey,
-            settings: settings.filter((setting) => group.matches(setting.iD)),
-        })),
-    ];
+    const unclassifiedSettings = settings.filter((setting) => !groupedIds.has(setting.iD));
+    const allGroups = groups.map((group) => ({
+        key: group.key,
+        labelKey: group.labelKey,
+        descriptionKey: group.descriptionKey,
+        settings: [
+            ...settings.filter((setting) => group.matches(setting.iD)),
+            ...(group.key === "setup-other" ? unclassifiedSettings : []),
+        ],
+    }));
 
     const normalizedSearch = search.trim().toLocaleLowerCase();
     const matchesDisplayFilter = (setting: Setting) => {
@@ -417,17 +427,20 @@ export const MqttForwardingFilters: React.FC<Props> = ({ optionIds, overlayId })
                 </Space>
             ),
             children: (
-                <div
-                    style={{
-                        display: "grid",
-                        gridTemplateColumns: isMobile
-                            ? "minmax(0, 1fr)"
-                            : "repeat(2, minmax(0, 1fr))",
-                        columnGap: 24,
-                    }}
-                >
-                    {group.visibleSettings.map(renderSetting)}
-                </div>
+                <Space direction="vertical" size={8} style={{ width: "100%" }}>
+                    <Typography.Text type="secondary">{t(group.descriptionKey)}</Typography.Text>
+                    <div
+                        style={{
+                            display: "grid",
+                            gridTemplateColumns: isMobile
+                                ? "minmax(0, 1fr)"
+                                : "repeat(2, minmax(0, 1fr))",
+                            columnGap: 24,
+                        }}
+                    >
+                        {group.visibleSettings.map(renderSetting)}
+                    </div>
+                </Space>
             ),
         };
     });
