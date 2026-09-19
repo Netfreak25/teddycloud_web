@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Button, Drawer, Input, List, Space, theme } from "antd";
+import { Button, Drawer, Input, List, Space, theme, Typography } from "antd";
 import { CaretRightOutlined, CloseOutlined, EditOutlined, SaveOutlined } from "@ant-design/icons";
 import { useTranslation } from "react-i18next";
 
@@ -13,6 +13,7 @@ type ChapterDrawerProps = {
     trackDurations?: number[];
     currentChapter: number | null;
     playbackEnabled: boolean;
+    playbackDisabledReason?: string;
     loadingChapter?: number;
     editable: boolean;
     onEditExternal?: () => void;
@@ -31,6 +32,7 @@ export const ChapterDrawer = ({
     trackDurations,
     currentChapter,
     playbackEnabled,
+    playbackDisabledReason,
     loadingChapter,
     editable,
     onEditExternal,
@@ -135,6 +137,11 @@ export const ChapterDrawer = ({
                     onChange={(event) => setDraftTitle(event.target.value)}
                     style={{ marginBottom: 16 }}
                 />
+            )}
+            {!editing && !playbackEnabled && playbackDisabledReason && (
+                <Typography.Paragraph type="secondary" role="status">
+                    {playbackDisabledReason}
+                </Typography.Paragraph>
             )}
             <List
                 dataSource={editing ? draftTracks : tracks}

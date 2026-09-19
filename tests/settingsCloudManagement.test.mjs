@@ -17,6 +17,76 @@ const LOCAL_CONTROL = "mqtt_client_upstream.local_control_enabled";
 const VOLUME = "toniebox2.max_volume";
 const CACHE = "toniebox2.cacheContentV3";
 
+const controlAvailability = "src/components/tonieboxes/tonieboxcard/live/controlAvailability.ts";
+
+test("app-control reasons stay per command and never override a granted capability", () => {
+    const { getControlReason } = loadModule(controlAvailability);
+    const runtime = {
+        controls: { playback: true, volume: false, ping: false, bedtime: false, sleep: true },
+        controlReasons: {
+            playback: "cloud_controlled",
+            volume: "cloud_controlled",
+            ping: "not_subscribed",
+            bedtime: "offline",
+        },
+    };
+    assert.equal(getControlReason(runtime, "playback"), undefined);
+    assert.equal(getControlReason(runtime, "volume"), "cloud_controlled");
+    assert.equal(getControlReason(runtime, "ping"), "not_subscribed");
+    assert.equal(getControlReason(runtime, "bedtime"), "offline");
+    assert.equal(getControlReason(runtime, "sleep"), undefined);
+});
+
+test("legacy or unknown app-control reasons keep the existing display fallback", () => {
+    const { getControlReason } = loadModule(controlAvailability);
+    const runtime = { controls: { playback: false } };
+    assert.equal(getControlReason(runtime, "playback"), undefined);
+    runtime.controlReasons = { playback: "future_backend_reason" };
+    assert.equal(getControlReason(runtime, "playback"), undefined);
+});
+
+test("shutdown explains only the commands it actually needs", () => {
+    const { getShutdownControlReason } = loadModule(controlAvailability);
+    const runtime = {
+        controls: { bedtime: false, sleep: true },
+        controlReasons: { bedtime: "cloud_controlled" },
+    };
+    assert.equal(getShutdownControlReason(runtime, true), undefined);
+    assert.equal(getShutdownControlReason(runtime, false), "cloud_controlled");
+    runtime.controls.sleep = false;
+    runtime.controlReasons.sleep = "not_subscribed";
+    assert.equal(getShutdownControlReason(runtime, true), "not_subscribed");
+    assert.equal(getShutdownControlReason(runtime, false), "not_subscribed");
+    delete runtime.controlReasons.sleep;
+    assert.equal(getShutdownControlReason(runtime, false), undefined);
+});
+
+test("live controls and chapter selection share backend reasons without MQTT policy logic", () => {
+    const controls = fs.readFileSync(
+        path.join(web, "src/components/tonieboxes/tonieboxcard/live/TonieboxLiveControls.tsx"),
+        "utf8",
+    );
+    const drawer = fs.readFileSync(
+        path.join(web, "src/components/tonieboxes/tonieboxcard/live/ChapterDrawer.tsx"),
+        "utf8",
+    );
+    assert.ok(controls.includes('controlTooltip("playback",'));
+    assert.ok(controls.includes('controlTooltip("volume",'));
+    assert.ok(controls.includes('controlReason("bedtime")'));
+    assert.ok(controls.includes('controlReason("sleep")'));
+    assert.ok(controls.includes('playbackDisabledReason={controlReason("playback")}'));
+    assert.ok(drawer.includes("!editing && !playbackEnabled && playbackDisabledReason"));
+    assert.ok(drawer.includes("disabled={!playbackEnabled}"));
+    assert.ok(!controls.includes("mqtt_client_upstream"));
+    for (const language of ["de", "en", "es", "fr", "tlh"]) {
+        const json = JSON.parse(
+            fs.readFileSync(path.join(web, "public/translations", `${language}.json`), "utf8"),
+        );
+        for (const reason of ["cloud_controlled", "offline", "not_subscribed"])
+            assert.ok(json.tonieboxes.live.controlReasons[reason]);
+    }
+});
+
 // Use production TypeScript, with only the network and notifications substituted.
 function loadModule(entry, api = {}) {
     const cache = new Map();

@@ -16,6 +16,8 @@ export type TonieboxRuntimeControls = {
     sleep: boolean;
 };
 
+export type TonieboxControlReason = "cloud_controlled" | "offline" | "not_subscribed";
+
 export type TonieboxPlaybackRuntime = {
     valid: boolean;
     status: TonieboxPlaybackStatus;
@@ -76,6 +78,7 @@ export type TonieboxRuntime = {
     online: boolean;
     lastConnection: number;
     controls: TonieboxRuntimeControls;
+    controlReasons?: Partial<Record<keyof TonieboxRuntimeControls, TonieboxControlReason>>;
     playback: TonieboxPlaybackRuntime;
     volume: TonieboxVolumeRuntime;
     battery: TonieboxBatteryRuntime;

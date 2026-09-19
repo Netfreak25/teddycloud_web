@@ -43,6 +43,7 @@ import {
 import { TonieCardProps } from "../../../../types/tonieTypes";
 import { ChapterDrawer } from "./ChapterDrawer";
 import { formatPlaybackTime } from "./formatTime";
+import { getControlReason, getShutdownControlReason } from "./controlAvailability";
 import {
     resolveTonieDisplayPicture,
     toImageSrc,
@@ -169,6 +170,16 @@ export const TonieboxLiveControls = ({
         runtime.controls.sleep &&
         (bedtimeActive || runtime.controls.bedtime) &&
         !commandPending;
+
+    const controlReason = (control: keyof TonieboxRuntime["controls"]) => {
+        const reason = getControlReason(runtime, control);
+        return reason ? t(`tonieboxes.live.controlReasons.${reason}`) : undefined;
+    };
+    const controlTooltip = (control: keyof TonieboxRuntime["controls"], label: string) => {
+        const reason = controlReason(control);
+        return reason ? `${label}: ${reason}` : label;
+    };
+    const shutdownReason = getShutdownControlReason(runtime, bedtimeActive);
 
     const middleAction: TonieboxPlaybackAction | undefined =
         playback.status === "playing"
@@ -403,6 +414,8 @@ export const TonieboxLiveControls = ({
                 runtime.bedtime.valid ||
                 runtime.controls.bedtime ||
                 runtime.controls.sleep ||
+                controlReason("bedtime") ||
+                controlReason("sleep") ||
                 runtime.online) && (
                 <Flex align="center" gap={12} style={{ marginBottom: hasActivePlayback ? 10 : 0 }}>
                     {runtime.battery.valid && (
@@ -431,7 +444,15 @@ export const TonieboxLiveControls = ({
                             />
                         </Tooltip>
                     )}
-                    <Tooltip title={bedtimeTooltip}>
+                    <Tooltip
+                        title={
+                            !runtime.controls.bedtime && !runtime.controls.sleep
+                                ? controlReason("bedtime") ||
+                                  controlReason("sleep") ||
+                                  bedtimeTooltip
+                                : bedtimeTooltip
+                        }
+                    >
                         <span style={{ marginLeft: "auto" }}>
                             <Button
                                 aria-label={t("tonieboxes.live.bedtime")}
@@ -462,9 +483,11 @@ export const TonieboxLiveControls = ({
                         >
                             <Tooltip
                                 title={
-                                    shutdownControlEnabled
-                                        ? t("tonieboxes.live.shutdown")
-                                        : t("tonieboxes.live.shutdownUnavailable")
+                                    shutdownReason
+                                        ? t(`tonieboxes.live.controlReasons.${shutdownReason}`)
+                                        : shutdownControlEnabled
+                                          ? t("tonieboxes.live.shutdown")
+                                          : t("tonieboxes.live.shutdownUnavailable")
                                 }
                             >
                                 <span>
@@ -550,65 +573,76 @@ export const TonieboxLiveControls = ({
                     </Flex>
 
                     <Flex justify="space-between" align="center" gap={4} style={{ marginTop: 12 }}>
-                        <Tooltip title={t("tonieboxes.live.restart")}>
-                            <Button
-                                aria-label={t("tonieboxes.live.restart")}
-                                type="text"
-                                icon={<ReloadOutlined />}
-                                style={controlButtonStyle}
-                                disabled={!playbackEnabled || commandPending}
-                                loading={commandInFlight === "restart"}
-                                onClick={() => void sendPlayback("restart")}
-                            />
+                        <Tooltip title={controlTooltip("playback", t("tonieboxes.live.restart"))}>
+                            <span>
+                                <Button
+                                    aria-label={t("tonieboxes.live.restart")}
+                                    type="text"
+                                    icon={<ReloadOutlined />}
+                                    style={controlButtonStyle}
+                                    disabled={!playbackEnabled || commandPending}
+                                    loading={commandInFlight === "restart"}
+                                    onClick={() => void sendPlayback("restart")}
+                                />
+                            </span>
                         </Tooltip>
-                        <Tooltip title={t("tonieboxes.live.previous")}>
-                            <Button
-                                aria-label={t("tonieboxes.live.previous")}
-                                type="text"
-                                icon={<StepBackwardOutlined />}
-                                style={controlButtonStyle}
-                                disabled={!playbackEnabled || commandPending}
-                                loading={commandInFlight === "prev"}
-                                onClick={() => void sendPlayback("prev")}
-                            />
+                        <Tooltip title={controlTooltip("playback", t("tonieboxes.live.previous"))}>
+                            <span>
+                                <Button
+                                    aria-label={t("tonieboxes.live.previous")}
+                                    type="text"
+                                    icon={<StepBackwardOutlined />}
+                                    style={controlButtonStyle}
+                                    disabled={!playbackEnabled || commandPending}
+                                    loading={commandInFlight === "prev"}
+                                    onClick={() => void sendPlayback("prev")}
+                                />
+                            </span>
                         </Tooltip>
                         <Tooltip
-                            title={
+                            title={controlTooltip(
+                                "playback",
                                 middleAction
                                     ? t(`tonieboxes.live.${middleAction}`)
-                                    : t("tonieboxes.live.playbackUnknown")
-                            }
+                                    : t("tonieboxes.live.playbackUnknown"),
+                            )}
                         >
-                            <Button
-                                aria-label={
-                                    middleAction
-                                        ? t(`tonieboxes.live.${middleAction}`)
-                                        : t("tonieboxes.live.playbackUnknown")
-                                }
-                                shape="circle"
-                                icon={
-                                    middleAction === "pause" ? (
-                                        <PauseOutlined />
-                                    ) : (
-                                        <CaretRightOutlined />
-                                    )
-                                }
-                                style={controlButtonStyle}
-                                disabled={!playbackEnabled || !middleAction || commandPending}
-                                loading={Boolean(middleAction && commandInFlight === middleAction)}
-                                onClick={() => middleAction && void sendPlayback(middleAction)}
-                            />
+                            <span>
+                                <Button
+                                    aria-label={
+                                        middleAction
+                                            ? t(`tonieboxes.live.${middleAction}`)
+                                            : t("tonieboxes.live.playbackUnknown")
+                                    }
+                                    shape="circle"
+                                    icon={
+                                        middleAction === "pause" ? (
+                                            <PauseOutlined />
+                                        ) : (
+                                            <CaretRightOutlined />
+                                        )
+                                    }
+                                    style={controlButtonStyle}
+                                    disabled={!playbackEnabled || !middleAction || commandPending}
+                                    loading={Boolean(
+                                        middleAction && commandInFlight === middleAction,
+                                    )}
+                                    onClick={() => middleAction && void sendPlayback(middleAction)}
+                                />
+                            </span>
                         </Tooltip>
-                        <Tooltip title={t("tonieboxes.live.next")}>
-                            <Button
-                                aria-label={t("tonieboxes.live.next")}
-                                type="text"
-                                icon={<StepForwardOutlined />}
-                                style={controlButtonStyle}
-                                disabled={!playbackEnabled || commandPending}
-                                loading={commandInFlight === "next"}
-                                onClick={() => void sendPlayback("next")}
-                            />
+                        <Tooltip title={controlTooltip("playback", t("tonieboxes.live.next"))}>
+                            <span>
+                                <Button
+                                    aria-label={t("tonieboxes.live.next")}
+                                    type="text"
+                                    icon={<StepForwardOutlined />}
+                                    style={controlButtonStyle}
+                                    disabled={!playbackEnabled || commandPending}
+                                    loading={commandInFlight === "next"}
+                                    onClick={() => void sendPlayback("next")}
+                                />
+                            </span>
                         </Tooltip>
                         <Tooltip title={t("tonieboxes.live.chapters")}>
                             <Button
@@ -622,21 +656,23 @@ export const TonieboxLiveControls = ({
                         </Tooltip>
                     </Flex>
 
-                    <Space.Compact block style={{ marginTop: 10, alignItems: "center" }}>
-                        <SoundOutlined
-                            style={{ width: CONTROL_SIZE, color: token.colorTextSecondary }}
-                        />
-                        <Slider
-                            aria-label={t("tonieboxes.live.volume")}
-                            min={VOLUME_MIN}
-                            max={VOLUME_MAX}
-                            value={volume}
-                            disabled={!volumeEnabled || commandPending}
-                            onChange={setVolume}
-                            onChangeComplete={(level) => void changeVolume(level)}
-                            style={{ flex: 1, marginInline: 8 }}
-                        />
-                    </Space.Compact>
+                    <Tooltip title={controlTooltip("volume", t("tonieboxes.live.volume"))}>
+                        <Space.Compact block style={{ marginTop: 10, alignItems: "center" }}>
+                            <SoundOutlined
+                                style={{ width: CONTROL_SIZE, color: token.colorTextSecondary }}
+                            />
+                            <Slider
+                                aria-label={t("tonieboxes.live.volume")}
+                                min={VOLUME_MIN}
+                                max={VOLUME_MAX}
+                                value={volume}
+                                disabled={!volumeEnabled || commandPending}
+                                onChange={setVolume}
+                                onChangeComplete={(level) => void changeVolume(level)}
+                                style={{ flex: 1, marginInline: 8 }}
+                            />
+                        </Space.Compact>
+                    </Tooltip>
                 </>
             )}
 
@@ -648,6 +684,7 @@ export const TonieboxLiveControls = ({
                 trackDurations={tonie?.playlist?.durations}
                 currentChapter={chapterIndex}
                 playbackEnabled={playbackEnabled && !commandPending}
+                playbackDisabledReason={controlReason("playback")}
                 loadingChapter={
                     commandInFlight?.startsWith("chapter-")
                         ? Number(commandInFlight.substring("chapter-".length))
@@ -682,7 +719,7 @@ export const TonieboxLiveControls = ({
                                 {t("tonieboxes.live.bedtimeStop")}
                             </Button>
                         )}
-                        {bedtimeActive && runtime.controls.sleep && (
+                        {bedtimeActive && (runtime.controls.sleep || controlReason("sleep")) && (
                             <Button
                                 icon={<PoweroffOutlined />}
                                 disabled={!sleepControlEnabled}
@@ -709,6 +746,16 @@ export const TonieboxLiveControls = ({
                 }
             >
                 <Flex vertical gap={8}>
+                    {controlReason("bedtime") && (
+                        <Typography.Text type="secondary" role="status">
+                            {controlReason("bedtime")}
+                        </Typography.Text>
+                    )}
+                    {bedtimeActive && controlReason("sleep") && (
+                        <Typography.Text type="secondary" role="status">
+                            {t("tonieboxes.live.sleepNow")}: {controlReason("sleep")}
+                        </Typography.Text>
+                    )}
                     <Typography.Text>{t("tonieboxes.live.bedtimeDurationLabel")}</Typography.Text>
                     <InputNumber
                         min={BEDTIME_MINUTES_MIN}

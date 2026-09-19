@@ -30,6 +30,7 @@ import { DeleteModal } from "./modals/DeleteModal";
 import { useTriggerWriteConfig } from "./hooks/useTriggerWriteConfig";
 import { canHover } from "../../../utils/browser/browserUtils";
 import { TonieboxLiveControls } from "./live/TonieboxLiveControls";
+import { getControlReason } from "./live/controlAvailability";
 import { resolveTonieDisplayPicture, toImageSrc } from "../../tonies/common/utils/imagePathUtils";
 
 const api = new TeddyCloudApi(defaultAPIConfig());
@@ -82,7 +83,9 @@ export const TonieboxCard: React.FC<{
             runtime.battery.valid ||
             runtime.headphones.valid ||
             runtime.bedtime.valid ||
-            runtime.controls.bedtime),
+            runtime.controls.bedtime ||
+            getControlReason(runtime, "bedtime") ||
+            getControlReason(runtime, "sleep")),
     );
 
     useEffect(() => {
