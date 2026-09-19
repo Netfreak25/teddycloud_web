@@ -20,7 +20,7 @@ import { defaultAPIConfig } from "../../../config/defaultApiConfig";
 
 import TonieInformationModal from "../../tonies/common/modals/TonieInformationModal";
 import { isIOS } from "../../../utils/browser/browserUtils";
-import { useNavigate } from "react-router";
+import { useNavigate } from "react-router-dom";
 import { getLongestStringByPixelWidth } from "../../../utils/strings/getLongestStringByPixelWidth";
 import { useAudioContext } from "../../../provider/AudioProvider";
 
