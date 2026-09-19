@@ -23,6 +23,7 @@ import { type CSSProperties, useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import SettingsDataHandler, { Setting } from "../../../data/SettingsDataHandler";
 import { SettingsOptionItem } from "./SettingsOptionItem";
+import { getTb2SettingAccess } from "../../../utils/tb2SettingsAuthority";
 
 export const MQTT_FILTERS_ENABLED = "mqtt_client_upstream.filters_enabled";
 
@@ -170,6 +171,18 @@ export const MqttForwardingFilters: React.FC<Props> = ({ optionIds, overlayId })
     const mobileSetting = mobileSettingId ? handler.getSetting(mobileSettingId) : undefined;
     const hasOverrides = settings.some((setting) => setting.overlayed && !setting.readOnly);
     const filtersEnabled = handler.getSetting(MQTT_FILTERS_ENABLED)?.value !== false;
+    const deviceSetting = handler.getSetting("toniebox2.max_volume");
+    const cloudManaged =
+        deviceSetting !== undefined &&
+        getTb2SettingAccess(deviceSetting, (id) => handler.getSetting(id)).cloudManaged;
+    const requestBlocked =
+        cloudManaged &&
+        filtersEnabled &&
+        handler.getSetting(`${FILTER_PREFIX}settings.request`)?.value === false;
+    const confirmBlocked =
+        cloudManaged &&
+        filtersEnabled &&
+        handler.getSetting(`${FILTER_PREFIX}settings.confirm`)?.value === false;
 
     // Reset the whole filter section, including rules hidden by search/group filters.
     // The existing save flow removes these overlays; global settings are never changed.
@@ -498,6 +511,16 @@ export const MqttForwardingFilters: React.FC<Props> = ({ optionIds, overlayId })
                                 <Typography.Text type="secondary">
                                     {t("settings.mqttForwarding.description")}
                                 </Typography.Text>
+                                {requestBlocked && (
+                                    <Typography.Text type="warning">
+                                        {t("settings.cloudAuthority.requestBlocked")}
+                                    </Typography.Text>
+                                )}
+                                {confirmBlocked && (
+                                    <Typography.Text type="warning">
+                                        {t("settings.cloudAuthority.confirmBlocked")}
+                                    </Typography.Text>
+                                )}
                                 {overlayId !== undefined && (
                                     <Tooltip title={t("settings.mqttForwarding.resetToGlobalHint")}>
                                         <Button

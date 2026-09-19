@@ -1,8 +1,10 @@
 import SettingsDataHandler from "../../../data/SettingsDataHandler";
 import { useTranslation } from "react-i18next";
+import { Typography } from "antd";
 import { SettingsInputField } from "./SettingsInputField";
 import { SettingsInputNumberField } from "./SettingsInputNumberField";
 import { SettingsSwitchField } from "./SettingsSwitchField";
+import { getTb2SettingAccess } from "../../../utils/tb2SettingsAuthority";
 
 interface SettingsOptionItem {
     iD: string;
@@ -21,13 +23,15 @@ const removeRedundantTb2Suffix = (value: string): string => value.replace(/\s*\(
 export const SettingsOptionItem: React.FC<SettingsOptionItem> = (props) => {
     const { t } = useTranslation();
     const { iD } = props;
-    const option = SettingsDataHandler.getInstance().getSetting(props.iD);
+    const handler = SettingsDataHandler.getInstance();
+    const option = handler.getSetting(props.iD);
 
     const overlayedProp = props.noOverlay ? undefined : option?.overlayed;
 
     if (option !== undefined) {
-        const { type, label, description, readOnly } = option;
-        const disabled = readOnly || props.disabled;
+        const { type, label, description } = option;
+        const access = getTb2SettingAccess(option, (id) => handler.getSetting(id));
+        const disabled = access.disabled || props.disabled;
         const fallbackLabel = isTb2CertificateSetting(iD) ? removeRedundantTb2Suffix(label) : label;
         const fallbackDescription = isTb2CertificateSetting(iD)
             ? removeRedundantTb2Suffix(description)
@@ -36,9 +40,14 @@ export const SettingsOptionItem: React.FC<SettingsOptionItem> = (props) => {
         const displayLabel = t(`settings.optionText.${translationId}.label`, {
             defaultValue: fallbackLabel,
         });
-        const displayDescription = t(`settings.optionText.${translationId}.description`, {
+        const translatedDescription = t(`settings.optionText.${translationId}.description`, {
             defaultValue: fallbackDescription,
         });
+        const displayDescription = access.cloudManaged
+            ? `${translatedDescription} ${t("settings.cloudAuthority.locked")} ${t(
+                  `settings.cloudAuthority.state.${access.cloudSettingsState}`,
+              )}`
+            : translatedDescription;
 
         return (
             <div key={iD}>
@@ -81,6 +90,14 @@ export const SettingsOptionItem: React.FC<SettingsOptionItem> = (props) => {
                         overlayId={props.overlayId}
                         disabled={disabled}
                     />
+                )}
+                {access.cloudManaged && (
+                    <Typography.Paragraph
+                        type="secondary"
+                        style={{ marginTop: -16, marginBottom: 16, fontSize: 12 }}
+                    >
+                        {t(`settings.cloudAuthority.state.${access.cloudSettingsState}`)}
+                    </Typography.Paragraph>
                 )}
             </div>
         );

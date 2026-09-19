@@ -4,6 +4,7 @@ import { useTranslation } from "react-i18next";
 import SettingsDataHandler from "../../../data/SettingsDataHandler";
 import { MqttForwardingFilters, MQTT_FILTERS_ENABLED } from "./MqttForwardingFilters";
 import { SettingsOptionItem } from "./SettingsOptionItem";
+import { getTb2SettingAccess } from "../../../utils/tb2SettingsAuthority";
 import {
     BoxGeneration,
     getSettingDependency,
@@ -104,12 +105,24 @@ export const SettingsScopeTabs: React.FC<Props> = ({ optionIds, overlayId, boxGe
         const mqttForwardingIds = orderedIds.filter(isMqttFilter);
         const standardIds = orderedIds.filter((id) => !isMqttFilter(id));
         const renderedDependencies = new Set<string>();
+        const hasCloudManagedSettings = standardIds.some((id) => {
+            const setting = handler.getSetting(id);
+            return (
+                setting &&
+                getTb2SettingAccess(setting, (key) => handler.getSetting(key)).cloudManaged
+            );
+        });
 
         return (
             <section key={sectionId} style={{ width: "100%", minWidth: 0 }}>
                 <Divider titlePlacement="start" plain>
                     {section ? t(section.labelKey) : t("settings.scopeSections.unclassified")}
                 </Divider>
+                {hasCloudManagedSettings && (
+                    <Typography.Paragraph type="secondary">
+                        {t("settings.cloudAuthority.locked")}
+                    </Typography.Paragraph>
+                )}
                 {standardIds.map((optionId) => {
                     const dependency = getSettingDependency(optionId);
                     if (dependency?.hideWhenDisabled && isDependencyDisabled(optionId)) {

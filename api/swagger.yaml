@@ -657,6 +657,16 @@ components:
                 overlayed:
                     type: string
                     description: "Object overlayed"
+                readOnly:
+                    type: boolean
+                    description: "Whether this setting may be changed in the selected scope"
+                readOnlyReason:
+                    type: string
+                    description: "Optional reason for a dynamic lock; tonies_settings identifies cloud-owned box settings"
+                cloudSettingsState:
+                    type: string
+                    enum: [local, waiting, received, confirmed]
+                    description: "Optional TB2 settings authority state; received does not imply box confirmation"
 
     responses:
         BadRequest:

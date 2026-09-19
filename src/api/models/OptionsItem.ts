@@ -63,6 +63,12 @@ export interface OptionsItem {
      * @memberof OptionsItem
      */
     overlayed: boolean;
+    /** Whether this setting may be changed in the selected scope. */
+    readOnly?: boolean;
+    /** Optional reason for a dynamic lock, for example tonies_settings. */
+    readOnlyReason?: string;
+    /** Receipt of a cloud value does not imply confirmation by the box. */
+    cloudSettingsState?: "local" | "waiting" | "received" | "confirmed";
 }
 
 /**
@@ -97,6 +103,9 @@ export function OptionsItemFromJSONTyped(json: any, ignoreDiscriminator: boolean
         type: json["type"],
         value: json["value"],
         overlayed: json["overlayed"],
+        readOnly: json["readOnly"],
+        readOnlyReason: json["readOnlyReason"],
+        cloudSettingsState: json["cloudSettingsState"],
     };
 }
 
@@ -115,5 +124,8 @@ export function OptionsItemToJSON(value?: OptionsItem | null): any {
         type: value.type,
         value: value.value,
         overlayed: value.overlayed,
+        readOnly: value.readOnly,
+        readOnlyReason: value.readOnlyReason,
+        cloudSettingsState: value.cloudSettingsState,
     };
 }

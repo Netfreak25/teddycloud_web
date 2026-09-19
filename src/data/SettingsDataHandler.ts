@@ -3,6 +3,11 @@ import { t, TFunction } from "i18next";
 import { TeddyCloudApi } from "../api/apis/TeddyCloudApi";
 import { defaultAPIConfig } from "../config/defaultApiConfig";
 import { NotificationTypeEnum } from "../types/teddyCloudNotificationTypes";
+import {
+    CloudSettingsState,
+    getTb2SettingAccess,
+    isCloudSettingsAuthoritySetting,
+} from "../utils/tb2SettingsAuthority";
 
 export interface Setting {
     description: string;
@@ -10,6 +15,8 @@ export interface Setting {
     label: string;
     overlayed: boolean | undefined;
     readOnly?: boolean;
+    readOnlyReason?: string;
+    cloudSettingsState?: CloudSettingsState;
     shortname: string;
     type: string;
     value: boolean | string | number;
@@ -25,6 +32,8 @@ export default class SettingsDataHandler {
     private static instance: SettingsDataHandler | undefined = undefined;
     private settings: Setting[] = [];
     private unsavedChanges: boolean = false;
+    private saving = false;
+    private configWritePending = false;
     private listeners: (() => void)[] = [];
     private idListeners: { iD: string; listener: () => void }[] = [];
     private addNotification!: (
@@ -77,6 +86,7 @@ export default class SettingsDataHandler {
             setting.overlayId = overlayId;
         });
         this.settings = data;
+        this.updateUnsavedChanges();
     }
 
     public addListener(listener: () => void) {
@@ -103,134 +113,164 @@ export default class SettingsDataHandler {
         this.listeners.forEach((listener) => listener());
     }
 
+    private isChanged(setting: Setting) {
+        return (
+            setting.initialValue !== setting.value || setting.initialOverlayed !== setting.overlayed
+        );
+    }
+
+    private updateUnsavedChanges() {
+        this.unsavedChanges =
+            this.configWritePending || this.settings.some((s) => this.isChanged(s));
+    }
+
+    /** Refresh server ownership and effective values without discarding edited drafts. */
+    public async refreshSettings(view = this.settings) {
+        if (view.length === 0) return;
+        const response = await api.apiGetIndexGet(view[0].overlayId ?? "");
+        if (this.settings !== view) return; // A different box/dialog is now open.
+        if (!response.options?.length) throw new Error("Empty settings index");
+
+        for (const option of response.options) {
+            const current = view.find((setting) => setting.iD === option.iD);
+            if (!current) continue;
+            const dirty = this.isChanged(current);
+            const value = current.value;
+            const overlayed = current.overlayed;
+            Object.assign(current, option, {
+                initialValue: option.value,
+                initialOverlayed: option.overlayed,
+                value: dirty ? value : option.value,
+                overlayed: dirty ? overlayed : option.overlayed,
+            });
+        }
+        this.updateUnsavedChanges();
+        this.callAllListeners();
+        this.idListeners.forEach((element) => element.listener());
+    }
+
     public async saveAll() {
-        const triggerWriteConfig = async () => {
-            await api.apiTriggerWriteConfigGet();
+        if (this.saving) return;
+        this.saving = true;
+        const view = this.settings;
+        // Freeze the submitted values: edits made while awaiting HTTP stay unsaved.
+        const changes = view.filter((setting) => this.isChanged(setting)).map((s) => ({ ...s }));
+        const supportsCloudSettings = view.some(
+            (setting) => setting.cloudSettingsState !== undefined,
+        );
+        const errors: unknown[] = [];
+        const save = async (setting: Setting) => {
+            await this.saveSingleSetting(setting);
+            this.configWritePending = true;
+            const current = view.find((item) => item.iD === setting.iD);
+            if (current) {
+                current.initialValue = setting.value;
+                current.initialOverlayed = setting.overlayed;
+            }
         };
 
         try {
-            const changedSettings = this.settings.filter(
-                (setting) =>
-                    setting.initialValue !== setting.value ||
-                    setting.initialOverlayed !== setting.overlayed,
-            );
-            const upstreamEnable = changedSettings.find(
-                (setting) =>
-                    setting.iD === "mqtt_client_upstream.enabled" && setting.value === true,
-            );
-            if (upstreamEnable) {
-                await this.saveSingleSetting(upstreamEnable);
+            const authorityChanges = changes.filter((s) => isCloudSettingsAuthoritySetting(s.iD));
+            for (const setting of authorityChanges) await save(setting);
+            if (supportsCloudSettings && authorityChanges.length > 0) {
+                await this.refreshSettings(view);
             }
-            const localControlChange = changedSettings.find(
-                (setting) => setting.iD === "mqtt_client_upstream.local_control_enabled",
+
+            const localControl = changes.find(
+                (s) => s.iD === "mqtt_client_upstream.local_control_enabled",
             );
-            if (localControlChange?.value === true) {
-                await this.saveSingleSetting(localControlChange);
-            }
-            const tb2HttpsModeEnable = changedSettings.find(
-                (setting) => TB2_HTTPS_MODE_SETTINGS.includes(setting.iD) && setting.value === true,
+            const httpsMode = changes.find(
+                (s) => TB2_HTTPS_MODE_SETTINGS.includes(s.iD) && s.value === true,
             );
-            if (tb2HttpsModeEnable) {
-                await this.saveSingleSetting(tb2HttpsModeEnable);
+            if (localControl?.value === true) await save(localControl);
+            if (httpsMode) await save(httpsMode);
+
+            for (const setting of changes) {
+                if (
+                    isCloudSettingsAuthoritySetting(setting.iD) ||
+                    setting === localControl ||
+                    setting === httpsMode
+                )
+                    continue;
+                const current = view.find((item) => item.iD === setting.iD)!;
+                const access = getTb2SettingAccess(current, (id) => {
+                    const effective = view.find((s) => s.iD === id);
+                    // Authorize against writes already accepted by the server, not
+                    // unsent drafts (local-control disable is deliberately last).
+                    return effective
+                        ? { ...effective, value: effective.initialValue ?? effective.value }
+                        : undefined;
+                });
+                if (access.disabled) {
+                    errors.push(
+                        new Error(`${setting.label}: ${t("settings.cloudAuthority.locked")}`),
+                    );
+                    continue;
+                }
+                await save(setting);
             }
-            await Promise.all(
-                changedSettings
-                    .filter(
-                        (setting) =>
-                            setting !== upstreamEnable &&
-                            setting !== tb2HttpsModeEnable &&
-                            setting !== localControlChange,
-                    )
-                    .map((setting) => this.saveSingleSetting(setting)),
-            );
-            if (localControlChange?.value === false) {
-                await this.saveSingleSetting(localControlChange);
+            if (localControl?.value === false) await save(localControl);
+        } catch (error) {
+            errors.push(error);
+        } finally {
+            // Persist successful preceding writes even if a later field was rejected.
+            if (this.configWritePending) {
+                try {
+                    await api.apiTriggerWriteConfigGet();
+                    this.configWritePending = false;
+                } catch (error) {
+                    errors.push(error);
+                }
             }
-            await triggerWriteConfig();
-            this.settings.forEach((setting) => {
-                setting.initialValue = setting.value;
-                setting.initialOverlayed =
-                    setting.overlayed !== undefined ? setting.overlayed : undefined;
-            });
-            this.unsavedChanges = false;
+            if (supportsCloudSettings) {
+                try {
+                    await this.refreshSettings(view);
+                } catch (error) {
+                    errors.push(error);
+                }
+            }
+            this.saving = false;
+            this.updateUnsavedChanges();
             this.callAllListeners();
-        } catch (e) {
+        }
+        if (errors.length > 0) {
             this.addNotification(
                 NotificationTypeEnum.Error,
                 t("settings.errorWhileSavingConfig"),
-                t("settings.errorWhileSavingConfigDetails") + e,
+                t("settings.errorWhileSavingConfigDetails") + errors.map(String).join("; "),
                 t("settings.navigationTitle"),
             );
         }
     }
 
-    private saveSingleSetting(setting: Setting) {
-        try {
-            const reset =
-                setting.overlayId !== undefined && setting.overlayed === false ? true : false;
-
-            return api
-                .apiPostTeddyCloudSetting(setting.iD, setting.value, setting.overlayId, reset)
-                .then(() => {
-                    this.addNotification(
-                        NotificationTypeEnum.Success,
-                        t("settings.saved"),
-                        reset
-                            ? t("settings.resetToTCDetails", {
-                                  setting: setting.label,
-                                  overlay:
-                                      setting.overlayId !== undefined
-                                          ? ` [${setting.overlayId}]`
-                                          : "",
-                              })
-                            : t("settings.saveDetails", {
-                                  setting: setting.label,
-                                  overlay:
-                                      setting.overlayId !== undefined
-                                          ? ` [${setting.overlayId}]`
-                                          : "",
-                              }),
-                        setting.overlayId === undefined
-                            ? t("settings.navigationTitle")
-                            : t("tonieboxes.navigationTitle"),
-                    );
-                })
-                .then(() => {
-                    const cloudStatusSettings = [
-                        "cloud.enabled",
-                        "cloud.tb2_enabled",
-                        "cloud.tb2_v3_enabled",
-                        "cloud.remote_hostname_tb2",
-                        "cloud.remote_port_tb2",
-                        "mqtt_client_upstream.enabled",
-                        "mqtt_client_upstream.local_control_enabled",
-                        "mqtt_client_upstream.hostname",
-                        "mqtt_client_upstream.port",
-                    ];
-                    if (cloudStatusSettings.includes(setting.iD) && this.setFetchCloudStatus) {
-                        this.setFetchCloudStatus((prev) => !prev);
-                    }
-                })
-                .catch((e) => {
-                    this.addNotification(
-                        NotificationTypeEnum.Error,
-                        t("settings.errorWhileSavingConfig") + setting.label,
-                        t("settings.errorWhileSavingConfigDetails") + e,
-                        setting.overlayId === undefined
-                            ? t("settings.navigationTitle")
-                            : t("tonieboxes.navigationTitle"),
-                    );
-                });
-        } catch (e) {
-            this.addNotification(
-                NotificationTypeEnum.Error,
-                t("settings.errorWhileSavingConfig") + setting.label,
-                t("settings.errorWhileSavingConfigDetails") + e,
-                setting.overlayId === undefined
-                    ? t("settings.navigationTitle")
-                    : t("tonieboxes.navigationTitle"),
-            );
-            return Promise<null>;
+    private async saveSingleSetting(setting: Setting) {
+        const reset = setting.overlayId !== undefined && setting.overlayed === false;
+        // Let HTTP errors reach saveAll; a rejected field must not be marked saved.
+        await api.apiPostTeddyCloudSetting(setting.iD, setting.value, setting.overlayId, reset);
+        this.addNotification(
+            NotificationTypeEnum.Success,
+            t("settings.saved"),
+            t(reset ? "settings.resetToTCDetails" : "settings.saveDetails", {
+                setting: setting.label,
+                overlay: setting.overlayId !== undefined ? ` [${setting.overlayId}]` : "",
+            }),
+            setting.overlayId === undefined
+                ? t("settings.navigationTitle")
+                : t("tonieboxes.navigationTitle"),
+        );
+        const cloudStatusSettings = [
+            "cloud.enabled",
+            "cloud.tb2_enabled",
+            "cloud.tb2_v3_enabled",
+            "cloud.remote_hostname_tb2",
+            "cloud.remote_port_tb2",
+            "mqtt_client_upstream.enabled",
+            "mqtt_client_upstream.local_control_enabled",
+            "mqtt_client_upstream.hostname",
+            "mqtt_client_upstream.port",
+        ];
+        if (cloudStatusSettings.includes(setting.iD) && this.setFetchCloudStatus) {
+            this.setFetchCloudStatus((prev) => !prev);
         }
     }
 
@@ -241,7 +281,7 @@ export default class SettingsDataHandler {
                 setting.initialOverlayed !== undefined ? setting.initialOverlayed : undefined;
         });
 
-        this.unsavedChanges = false;
+        this.updateUnsavedChanges();
         this.callAllListeners();
         this.idListeners.forEach((element) => element.listener());
     }
@@ -271,19 +311,7 @@ export default class SettingsDataHandler {
                         }
                     }
                 }
-                if (settingToChange.initialValue === settingToChange.value) {
-                    this.unsavedChanges = false;
-                    this.settings.forEach((setting) => {
-                        if (setting.initialValue !== setting.value) {
-                            this.unsavedChanges = true;
-                        }
-                        if (setting.initialOverlayed !== setting.overlayed) {
-                            this.unsavedChanges = true;
-                        }
-                    });
-                } else {
-                    this.unsavedChanges = true;
-                }
+                this.updateUnsavedChanges();
                 this.idListeners
                     .filter((element) => element.iD === iD)
                     .forEach((element) => {
@@ -375,19 +403,7 @@ export default class SettingsDataHandler {
                 fetchFieldValue();
             }
 
-            if (settingToChange.initialOverlayed === settingToChange.overlayed) {
-                this.unsavedChanges = false;
-                this.settings.forEach((setting) => {
-                    if (setting.initialValue !== setting.value) {
-                        this.unsavedChanges = true;
-                    }
-                    if (setting.initialOverlayed !== setting.overlayed) {
-                        this.unsavedChanges = true;
-                    }
-                });
-            } else {
-                this.unsavedChanges = true;
-            }
+            this.updateUnsavedChanges();
             this.idListeners
                 .filter((element) => element.iD === iD)
                 .forEach((element) => {

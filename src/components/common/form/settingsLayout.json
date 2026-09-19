@@ -282,13 +282,6 @@
             "labelKey": "settings.scopeSections.content",
             "showHeading": false,
             "dependents": ["cloud.prioCustomContent"]
-        },
-        {
-            "master": "mqtt_client_upstream.local_control_enabled",
-            "labelKey": "settings.scopeSections.localIciControl",
-            "showHeading": false,
-            "dependentPrefixes": ["toniebox2."],
-            "appliesWhen": [{ "setting": "mqtt_client_upstream.enabled", "value": true }]
         }
     ]
 }
