@@ -32,7 +32,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
             footer={null}
             wrapClassName={"overlay-" + overlayId}
         >
-            <Settings onClose={onClose} overlay={overlayId} key={modalKey} />
+            <Settings onClose={onClose} overlay={overlayId} key={modalKey} visible={open} />
         </Modal>
     );
 };

@@ -19,9 +19,10 @@ const api = new TeddyCloudApi(defaultAPIConfig());
 
 const { useToken } = theme;
 
-export const Settings: React.FC<{ overlay: string; onClose?: () => void }> = ({
+export const Settings: React.FC<{ overlay: string; onClose?: () => void; visible?: boolean }> = ({
     overlay,
     onClose,
+    visible = true,
 }) => {
     const { t } = useTranslation();
     const { token } = useToken();
@@ -177,6 +178,7 @@ export const Settings: React.FC<{ overlay: string; onClose?: () => void }> = ({
                                 optionIds={optionIds}
                                 overlayId={overlay}
                                 boxGeneration={boxGeneration}
+                                visible={visible}
                             />
                         </Form>
                     </Formik>

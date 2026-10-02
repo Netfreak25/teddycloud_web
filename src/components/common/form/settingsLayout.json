@@ -239,6 +239,7 @@
             "core.flex_enabled",
             "core.flex_uid",
             "mqtt_client_upstream.local_control_enabled",
+            "mqtt_server.debug_enabled",
             "toniebox.api_access",
             "toniebox.boxGeneration"
         ],

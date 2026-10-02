@@ -3,6 +3,8 @@ import { useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import SettingsDataHandler from "../../../data/SettingsDataHandler";
 import { MqttForwardingFilters } from "./MqttForwardingFilters";
+import { MqttDiagnostics } from "./MqttDiagnostics";
+import { MQTT_DEBUG_SETTING } from "../../../utils/mqttDiagnostics";
 import { SettingsOptionItem } from "./SettingsOptionItem";
 import {
     BoxGeneration,
@@ -17,14 +19,21 @@ type Props = {
     optionIds: string[];
     overlayId?: string;
     boxGeneration?: BoxGeneration;
+    visible?: boolean;
 };
 
 const MQTT_FORWARD_PREFIX = "mqtt_client_upstream.forward.";
 const FALLBACK_SECTION_ID = "global.unclassified";
 
-export const SettingsScopeTabs: React.FC<Props> = ({ optionIds, overlayId, boxGeneration }) => {
+export const SettingsScopeTabs: React.FC<Props> = ({
+    optionIds,
+    overlayId,
+    boxGeneration,
+    visible = true,
+}) => {
     const { t } = useTranslation();
     const [, setRevision] = useState(0);
+    const [activeScope, setActiveScope] = useState("global");
     const handler = SettingsDataHandler.getInstance();
 
     useEffect(() => {
@@ -45,6 +54,8 @@ export const SettingsScopeTabs: React.FC<Props> = ({ optionIds, overlayId, boxGe
         const candidateIds = optionIds.filter(
             (optionId) =>
                 optionId !== "core.settings_level" &&
+                (optionId !== MQTT_DEBUG_SETTING ||
+                    (overlayId !== undefined && boxGeneration === "tb2")) &&
                 (overlayId === undefined || isSettingOverlayEligible(optionId)),
         );
 
@@ -57,7 +68,7 @@ export const SettingsScopeTabs: React.FC<Props> = ({ optionIds, overlayId, boxGe
         });
 
         return result;
-    }, [optionIds, overlayId]);
+    }, [optionIds, overlayId, boxGeneration]);
 
     const isDependencyDisabled = (optionId: string) => {
         const dependency = getSettingDependency(optionId);
@@ -100,7 +111,9 @@ export const SettingsScopeTabs: React.FC<Props> = ({ optionIds, overlayId, boxGe
             return leftIndex - rightIndex;
         });
         const mqttForwardingIds = orderedIds.filter((id) => id.startsWith(MQTT_FORWARD_PREFIX));
-        const standardIds = orderedIds.filter((id) => !id.startsWith(MQTT_FORWARD_PREFIX));
+        const standardIds = orderedIds.filter(
+            (id) => !id.startsWith(MQTT_FORWARD_PREFIX) && id !== MQTT_DEBUG_SETTING,
+        );
         const renderedDependencies = new Set<string>();
 
         return (
@@ -133,6 +146,12 @@ export const SettingsScopeTabs: React.FC<Props> = ({ optionIds, overlayId, boxGe
                 {mqttForwardingIds.length > 0 && (
                     <MqttForwardingFilters optionIds={mqttForwardingIds} overlayId={overlayId} />
                 )}
+                {overlayId !== undefined && orderedIds.includes(MQTT_DEBUG_SETTING) && (
+                    <MqttDiagnostics
+                        overlay={overlayId}
+                        active={visible && activeScope === "tb2"}
+                    />
+                )}
             </section>
         );
     };
@@ -157,5 +176,12 @@ export const SettingsScopeTabs: React.FC<Props> = ({ optionIds, overlayId, boxGe
         };
     });
 
-    return <Tabs items={tabItems} style={{ width: "100%", minWidth: 0 }} />;
+    return (
+        <Tabs
+            items={tabItems}
+            activeKey={activeScope}
+            onChange={setActiveScope}
+            style={{ width: "100%", minWidth: 0 }}
+        />
+    );
 };
