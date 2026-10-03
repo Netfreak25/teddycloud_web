@@ -92,6 +92,32 @@ test("download URL uses the configured base and immutable snapshot prefix", () =
     assert.equal(url.searchParams.get("length"), "2");
 });
 
+test("deletion targets one recording in the selected overlay and reports backend errors", async () => {
+    fetchResponse = { ok: true, json: async () => ({ ok: true }) };
+    await exports.deleteMqttDiagnosticSession("BOX A", "session-1");
+    const [address, options] = requests.at(-1);
+    const url = new URL(address);
+    assert.equal(url.pathname, "/prefix/api/diagnostics/mqtt/delete");
+    assert.equal(url.searchParams.get("overlay"), "BOX A");
+    assert.equal(url.searchParams.get("session"), "session-1");
+    assert.equal(url.searchParams.has("file"), false);
+    assert.equal(options.method, "POST");
+    assert.equal(options.cache, "no-store");
+    fetchResponse = {
+        ok: false,
+        status: 409,
+        json: async () => ({ error: "delete_failed", message: "Recording is unavailable" }),
+    };
+    await assert.rejects(
+        exports.deleteMqttDiagnosticSession("BOX", "session-1"),
+        /Recording is unavailable/,
+    );
+    const requestCount = requests.length;
+    await assert.rejects(exports.deleteMqttDiagnosticSession("BOX", "../session-1"));
+    await assert.rejects(exports.deleteMqttDiagnosticSession("", "session-1"));
+    assert.equal(requests.length, requestCount);
+});
+
 test("rotated or incomplete files fail the archive instead of returning a partial success", async () => {
     const entries = exports.buildMqttArchiveParts([session()])[0];
     fetchResponse = { ok: false, status: 404 };
@@ -132,6 +158,13 @@ test("box diagnostics use normal drafts, are TB2-only, and have all five transla
     assert.ok(panel.includes("handler.changeSetting(MQTT_DEBUG_SETTING, value, true)"));
     assert.ok(!panel.includes("initializeSettings"));
     assert.ok(!panel.includes("setInterval"));
+    assert.ok(panel.includes("<Popconfirm"));
+    assert.ok(panel.includes("onConfirm={() => deleteRecording(session)}"));
+    assert.ok(panel.includes('"settings.mqttDebug.deleteActiveHint"'));
+    assert.ok(panel.includes('"settings.mqttDebug.deleteHint"'));
+    assert.ok(panel.includes("disabled={busy}"));
+    assert.ok(panel.includes("title={deleteError}"));
+    assert.match(panel, /finally\s*\{\s*await refresh\(\);\s*setDeleting\(""\);/);
     assert.ok(panel.indexOf('t("settings.mqttDebug.privacy")') < panel.indexOf("<Switch"));
     assert.ok(panel.indexOf('t("settings.mqttDebug.privacy")') < panel.indexOf("<Collapse"));
     assert.ok(tabs.includes(': ["global", boxGeneration]'));

@@ -1,11 +1,12 @@
-import { DownloadOutlined, ReloadOutlined } from "@ant-design/icons";
-import { Alert, Button, Collapse, Form, Space, Switch, Tag, Typography } from "antd";
+import { DeleteOutlined, DownloadOutlined, ReloadOutlined } from "@ant-design/icons";
+import { Alert, Button, Collapse, Form, Popconfirm, Space, Switch, Tag, Typography } from "antd";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import SettingsDataHandler from "../../../data/SettingsDataHandler";
 import {
     buildMqttArchiveParts,
     createMqttDiagnosticArchive,
+    deleteMqttDiagnosticSession,
     MQTT_DEBUG_SETTING,
     MqttDiagnosticSession,
     MqttDiagnosticStatus,
@@ -25,6 +26,8 @@ export const MqttDiagnostics: React.FC<Props> = ({ overlay, active }) => {
     const [loading, setLoading] = useState(false);
     const [loadError, setLoadError] = useState("");
     const [downloadError, setDownloadError] = useState("");
+    const [deleteError, setDeleteError] = useState("");
+    const [deleting, setDeleting] = useState("");
     const [downloading, setDownloading] = useState("");
     const [progress, setProgress] = useState("");
     const statusRequest = useRef<AbortController | null>(null);
@@ -33,6 +36,7 @@ export const MqttDiagnostics: React.FC<Props> = ({ overlay, active }) => {
     const savedEnabled = setting?.initialValue === true;
     const enabledDraft = setting?.value === true;
     const pending = enabledDraft !== savedEnabled;
+    const busy = loading || downloading !== "" || deleting !== "";
 
     useEffect(() => {
         const listener = () => setRevision((revision) => revision + 1);
@@ -111,6 +115,20 @@ export const MqttDiagnostics: React.FC<Props> = ({ overlay, active }) => {
         }
     };
 
+    const deleteRecording = async (session: MqttDiagnosticSession) => {
+        if (busy) return;
+        setDeleting(session.id);
+        setDeleteError("");
+        try {
+            await deleteMqttDiagnosticSession(overlay, session.id);
+        } catch (error) {
+            setDeleteError(t("settings.mqttDebug.deleteFailed", { error: String(error) }));
+        } finally {
+            await refresh();
+            setDeleting("");
+        }
+    };
+
     return (
         <div style={{ marginBottom: 16 }}>
             <Alert
@@ -147,6 +165,7 @@ export const MqttDiagnostics: React.FC<Props> = ({ overlay, active }) => {
                                 <Button
                                     icon={<ReloadOutlined />}
                                     loading={loading}
+                                    disabled={deleting !== ""}
                                     onClick={() => void refresh()}
                                 >
                                     {t("settings.mqttDebug.refresh")}
@@ -162,6 +181,7 @@ export const MqttDiagnostics: React.FC<Props> = ({ overlay, active }) => {
                                 {downloadError && (
                                     <Alert type="error" showIcon title={downloadError} />
                                 )}
+                                {deleteError && <Alert type="error" showIcon title={deleteError} />}
                                 {status && (
                                     <>
                                         <Space wrap>
@@ -220,6 +240,7 @@ export const MqttDiagnostics: React.FC<Props> = ({ overlay, active }) => {
                                                         loading={downloading === session.id}
                                                         disabled={
                                                             session.files.length === 0 ||
+                                                            deleting !== "" ||
                                                             (downloading !== "" &&
                                                                 downloading !== session.id)
                                                         }
@@ -227,6 +248,28 @@ export const MqttDiagnostics: React.FC<Props> = ({ overlay, active }) => {
                                                     >
                                                         {t("settings.mqttDebug.download")}
                                                     </Button>
+                                                    <Popconfirm
+                                                        title={t("settings.mqttDebug.deleteTitle")}
+                                                        description={t(
+                                                            session.active
+                                                                ? "settings.mqttDebug.deleteActiveHint"
+                                                                : "settings.mqttDebug.deleteHint",
+                                                        )}
+                                                        okText={t("settings.mqttDebug.delete")}
+                                                        cancelText={t("tonies.cancel")}
+                                                        okButtonProps={{ danger: true }}
+                                                        disabled={busy}
+                                                        onConfirm={() => deleteRecording(session)}
+                                                    >
+                                                        <Button
+                                                            danger
+                                                            icon={<DeleteOutlined />}
+                                                            disabled={busy}
+                                                            loading={deleting === session.id}
+                                                        >
+                                                            {t("settings.mqttDebug.delete")}
+                                                        </Button>
+                                                    </Popconfirm>
                                                 </Space>
                                                 <Typography.Paragraph type="secondary">
                                                     {session.files

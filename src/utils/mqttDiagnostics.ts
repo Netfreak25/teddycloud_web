@@ -94,6 +94,25 @@ export const mqttDiagnosticUrl = (overlay: string, file?: MqttArchiveEntry): str
     return `${defaultAPIConfig().basePath.replace(/\/$/, "")}${API_PATH}${file ? "/file" : ""}?${query}`;
 };
 
+/** Delete only the selected recording; the backend keeps an active MQTT connection intact. */
+export const deleteMqttDiagnosticSession = async (
+    overlay: string,
+    session: string,
+): Promise<void> => {
+    if (!overlay || !isIdentifier(session)) throw new Error("Invalid MQTT diagnostic session");
+    const query = new URLSearchParams({ overlay, session });
+    const response = await fetch(
+        `${defaultAPIConfig().basePath.replace(/\/$/, "")}${API_PATH}/delete?${query}`,
+        { method: "POST", cache: "no-store" },
+    );
+    const result: unknown = await response.json();
+    if (!response.ok || !isObject(result) || result.ok !== true) {
+        const message =
+            isObject(result) && typeof result.message === "string" ? result.message : "";
+        throw new Error(message || `HTTP ${response.status}: MQTT diagnostic deletion failed`);
+    }
+};
+
 /** Stable grouping bounds each archive's input, including its manifest, to 64 MiB. */
 export const buildMqttArchiveParts = (sessions: MqttDiagnosticSession[]): MqttArchiveEntry[][] => {
     const entries = sessions
