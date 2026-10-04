@@ -37,13 +37,25 @@ const api = new TeddyCloudApi(defaultAPIConfig());
 const { Meta } = Card;
 const { useToken } = theme;
 
+export type TonieboxDragHandleProps = React.HTMLAttributes<HTMLDivElement> & {
+    ref: React.Ref<HTMLDivElement>;
+};
+
 export const TonieboxCard: React.FC<{
     tonieboxCard: TonieboxCardProps;
     tonieboxImages: TonieboxImage[];
     readOnly?: boolean;
     checkCC3200CFW?: boolean;
     onRefresh?: () => Promise<void>;
-}> = ({ tonieboxCard, tonieboxImages, readOnly = false, checkCC3200CFW = false, onRefresh }) => {
+    dragHandle?: TonieboxDragHandleProps;
+}> = ({
+    tonieboxCard,
+    tonieboxImages,
+    readOnly = false,
+    checkCC3200CFW = false,
+    onRefresh,
+    dragHandle,
+}) => {
     const { t, i18n } = useTranslation();
     const { token } = useToken();
     const { addNotification, addLoadingNotification, closeLoadingNotification } = useTeddyCloud();
@@ -583,7 +595,38 @@ export const TonieboxCard: React.FC<{
                 hoverable={false}
                 size="medium"
                 style={{ background: token.colorBgContainerDisabled, cursor: "default" }}
-                title={<span>{tonieboxName}</span>}
+                styles={dragHandle ? { header: { padding: 0, minHeight: 0 } } : undefined}
+                title={
+                    dragHandle ? (
+                        <div
+                            {...dragHandle}
+                            style={{
+                                display: "flex",
+                                alignItems: "center",
+                                width: "100%",
+                                minHeight:
+                                    token.fontSizeLG * token.lineHeightLG + token.padding * 2,
+                                paddingInline: token.paddingLG,
+                                boxSizing: "border-box",
+                                userSelect: "none",
+                                touchAction: "pan-y",
+                                ...dragHandle.style,
+                            }}
+                        >
+                            <span
+                                style={{
+                                    overflow: "hidden",
+                                    textOverflow: "ellipsis",
+                                    whiteSpace: "nowrap",
+                                }}
+                            >
+                                {tonieboxName}
+                            </span>
+                        </div>
+                    ) : (
+                        <span>{tonieboxName}</span>
+                    )
+                }
                 cover={
                     <div
                         style={{

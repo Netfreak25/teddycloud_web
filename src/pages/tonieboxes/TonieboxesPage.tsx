@@ -47,7 +47,11 @@ export const TonieboxesPage = () => {
                         />
                     )}
 
-                    <TonieboxesList tonieboxCards={tonieboxes} onRefresh={refreshTonieboxes} />
+                    <TonieboxesList
+                        tonieboxCards={tonieboxes}
+                        onRefresh={refreshTonieboxes}
+                        sortable
+                    />
                 </StyledContent>
             </StyledLayout>
         </>

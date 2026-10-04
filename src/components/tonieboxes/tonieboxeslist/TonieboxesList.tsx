@@ -9,12 +9,14 @@ import LoadingSpinner from "../../common/elements/LoadingSpinner";
 import { useTeddyCloud } from "../../../provider/TeddyCloudProvider";
 import { NotificationTypeEnum } from "../../../types/teddyCloudNotificationTypes";
 import { useGetSettingCheckCC3200CFW } from "./hooks/useGetSettingCheckCC3200CFW";
+import { SortableTonieboxes } from "./SortableTonieboxes";
 
 export const TonieboxesList: React.FC<{
     tonieboxCards: TonieboxCardProps[];
     readOnly?: boolean;
+    sortable?: boolean;
     onRefresh?: () => Promise<void>;
-}> = ({ tonieboxCards, readOnly = false, onRefresh }) => {
+}> = ({ tonieboxCards, readOnly = false, sortable = false, onRefresh }) => {
     const { t } = useTranslation();
     const { addNotification, boxModelImages, boxModelImagesLoading } = useTeddyCloud();
     const screens = Grid.useBreakpoint();
@@ -59,6 +61,28 @@ export const TonieboxesList: React.FC<{
             }
         />
     );
+
+    // Keep the sorting state mounted through temporary empty polling results.
+    if (sortable && !readOnly) {
+        return (
+            <>
+                {!tonieboxCards.length && noDataTonieboxes}
+                <SortableTonieboxes
+                    tonieboxCards={tonieboxCards}
+                    columns={columns}
+                    renderCard={(toniebox, dragHandle) => (
+                        <TonieboxCard
+                            tonieboxCard={toniebox}
+                            tonieboxImages={boxModelImages}
+                            checkCC3200CFW={checkCC3200CFW}
+                            onRefresh={onRefresh}
+                            dragHandle={dragHandle}
+                        />
+                    )}
+                />
+            </>
+        );
+    }
 
     if (!tonieboxCards.length) {
         return noDataTonieboxes;
