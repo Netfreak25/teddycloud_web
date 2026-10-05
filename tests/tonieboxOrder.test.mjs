@@ -15,7 +15,7 @@ vm.runInNewContext(
             module: ts.ModuleKind.CommonJS,
         },
     }).outputText,
-    { exports, URL },
+    { exports, URL, require },
 );
 
 const ids = (boxes) => Array.from(boxes, (box) => box.ID);
@@ -93,13 +93,9 @@ test("reordering never mutates API arrays or boxes and always retains latest liv
 test("drop moves forward and backward in effective order including new live boxes", () => {
     const boxes = Object.freeze([{ ID: "a" }, { ID: "c" }, { ID: "b" }, { ID: "new" }]);
     const order = Object.freeze(["gone", "b", "a", "c"]);
-    assert.deepEqual(list(exports.moveTonieboxOrder(boxes, order, "b", "c")), [
-        "a",
-        "c",
-        "b",
-        "new",
-    ]);
-    assert.deepEqual(list(exports.moveTonieboxOrder(boxes, order, "new", "b")), [
+    const currentIds = Object.freeze(ids(exports.orderTonieboxes(boxes, order)));
+    assert.deepEqual(list(exports.moveTonieboxOrder(currentIds, "b", "c")), ["a", "c", "b", "new"]);
+    assert.deepEqual(list(exports.moveTonieboxOrder(currentIds, "new", "b")), [
         "new",
         "b",
         "a",
@@ -110,8 +106,7 @@ test("drop moves forward and backward in effective order including new live boxe
 });
 
 test("same-target, stale and empty drops never produce a persistable order", () => {
-    const boxes = [{ ID: "a" }, { ID: "b" }];
-    const order = ["b", "a", "gone"];
+    const currentIds = ["b", "a"];
     for (const [active, over] of [
         ["a", "a"],
         ["gone", "b"],
@@ -119,7 +114,7 @@ test("same-target, stale and empty drops never produce a persistable order", () 
         ["missing", "b"],
         ["a", ""],
     ]) {
-        assert.equal(exports.moveTonieboxOrder(boxes, order, active, over), null);
+        assert.equal(exports.moveTonieboxOrder(currentIds, active, over), null);
     }
-    assert.equal(exports.moveTonieboxOrder([], order, "a", "b"), null);
+    assert.equal(exports.moveTonieboxOrder([], "a", "b"), null);
 });

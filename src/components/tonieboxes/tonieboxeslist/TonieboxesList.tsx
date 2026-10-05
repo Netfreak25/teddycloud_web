@@ -1,4 +1,4 @@
-import React, { useEffect } from "react";
+import React, { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Empty, Flex, Grid } from "antd";
 
@@ -9,7 +9,24 @@ import LoadingSpinner from "../../common/elements/LoadingSpinner";
 import { useTeddyCloud } from "../../../provider/TeddyCloudProvider";
 import { NotificationTypeEnum } from "../../../types/teddyCloudNotificationTypes";
 import { useGetSettingCheckCC3200CFW } from "./hooks/useGetSettingCheckCC3200CFW";
-import { SortableTonieboxes } from "./SortableTonieboxes";
+import {
+    DndContext,
+    MouseSensor,
+    closestCenter,
+    useSensor,
+    useSensors,
+    type DragEndEvent,
+} from "@dnd-kit/core";
+import { SortableContext, rectSortingStrategy } from "@dnd-kit/sortable";
+import { defaultAPIConfig } from "../../../config/defaultApiConfig";
+import {
+    getTonieboxOrderStorageKey,
+    parseTonieboxOrder,
+    orderTonieboxes,
+    moveTonieboxOrder,
+} from "../../../utils/tonieboxOrder";
+
+const MOUSE_DRAG_DISTANCE = 6;
 
 export const TonieboxesList: React.FC<{
     tonieboxCards: TonieboxCardProps[];
@@ -20,6 +37,37 @@ export const TonieboxesList: React.FC<{
     const { t } = useTranslation();
     const { addNotification, boxModelImages, boxModelImagesLoading } = useTeddyCloud();
     const screens = Grid.useBreakpoint();
+    const storageKey = getTonieboxOrderStorageKey(
+        defaultAPIConfig().basePath,
+        window.location.origin,
+    );
+    const [order, setOrder] = useState(() => {
+        try {
+            return sortable ? parseTonieboxOrder(localStorage.getItem(storageKey)) : [];
+        } catch (error) {
+            console.error("Could not read Toniebox order", error);
+            return [];
+        }
+    });
+    const sensors = useSensors(
+        useSensor(MouseSensor, { activationConstraint: { distance: MOUSE_DRAG_DISTANCE } }),
+    );
+    const cards = sortable && !readOnly ? orderTonieboxes(tonieboxCards, order) : tonieboxCards;
+    const handleDragEnd = ({ active, over }: DragEndEvent) => {
+        if (!over) return;
+        const next = moveTonieboxOrder(
+            cards.map((box) => box.ID),
+            String(active.id),
+            String(over.id),
+        );
+        if (!next) return;
+        setOrder(next);
+        try {
+            localStorage.setItem(storageKey, JSON.stringify(next));
+        } catch (error) {
+            console.error("Could not save Toniebox order", error);
+        }
+    };
 
     const columns = screens.xxl
         ? 4
@@ -62,38 +110,16 @@ export const TonieboxesList: React.FC<{
         />
     );
 
-    // Keep the sorting state mounted through temporary empty polling results.
-    if (sortable && !readOnly) {
-        return (
-            <>
-                {!tonieboxCards.length && noDataTonieboxes}
-                <SortableTonieboxes
-                    tonieboxCards={tonieboxCards}
-                    columns={columns}
-                    renderCard={(toniebox, dragHandle) => (
-                        <TonieboxCard
-                            tonieboxCard={toniebox}
-                            tonieboxImages={boxModelImages}
-                            checkCC3200CFW={checkCC3200CFW}
-                            onRefresh={onRefresh}
-                            dragHandle={dragHandle}
-                        />
-                    )}
-                />
-            </>
-        );
-    }
-
     if (!tonieboxCards.length) {
         return noDataTonieboxes;
     }
 
-    return (
+    const content = (
         <Flex wrap gap={16}>
             {tonieboxCards.length === 0 ? (
                 <div style={{ width: "100%", textAlign: "center" }}>{noDataTonieboxes}</div>
             ) : (
-                tonieboxCards.map((toniebox) => (
+                cards.map((toniebox) => (
                     <div
                         key={toniebox.ID}
                         style={{
@@ -105,6 +131,7 @@ export const TonieboxesList: React.FC<{
                             tonieboxCard={toniebox}
                             tonieboxImages={boxModelImages}
                             readOnly={readOnly}
+                            sortable={sortable && !readOnly}
                             checkCC3200CFW={checkCC3200CFW}
                             onRefresh={onRefresh}
                         />
@@ -112,5 +139,15 @@ export const TonieboxesList: React.FC<{
                 ))
             )}
         </Flex>
+    );
+
+    return sortable && !readOnly ? (
+        <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+            <SortableContext items={cards.map((box) => box.ID)} strategy={rectSortingStrategy}>
+                {content}
+            </SortableContext>
+        </DndContext>
+    ) : (
+        content
     );
 };
