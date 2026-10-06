@@ -190,6 +190,7 @@
                 "cloud.tb2_v3_enabled",
                 "cloud.enableV3FreshnessCheck",
                 "cloud.enableV3Ota",
+                "cloud.cacheOtaV3BothSlots",
                 "cloud.enableV3SetupStatus",
                 "cloud.enableV3ContentMeta",
                 "cloud.enableV3Chapter",
@@ -203,6 +204,7 @@
                 "cloud.tb2_v3_enabled",
                 "cloud.enableV3FreshnessCheck",
                 "cloud.enableV3Ota",
+                "cloud.cacheOtaV3BothSlots",
                 "cloud.enableV3SetupStatus",
                 "cloud.enableV3ContentMeta",
                 "cloud.enableV3Chapter",
@@ -233,6 +235,7 @@
         }
     ],
     "overlay": {
+        "excludedIds": ["cloud.cacheOtaV3BothSlots"],
         "ids": [
             "core.certdir",
             "core.contentdir",

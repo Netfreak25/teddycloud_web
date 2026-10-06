@@ -28,6 +28,7 @@ type SettingsLayoutDefinition = {
     overlay: {
         ids: string[];
         prefixes: string[];
+        excludedIds: string[];
     };
     dependencies: SettingDependency[];
 };
@@ -60,8 +61,9 @@ export const getSettingsSection = (optionId: string): SettingsLayoutSection | un
 };
 
 export const isSettingOverlayEligible = (optionId: string): boolean =>
-    settingsLayout.overlay.ids.includes(optionId) ||
-    settingsLayout.overlay.prefixes.some((prefix) => optionId.startsWith(prefix));
+    !settingsLayout.overlay.excludedIds.includes(optionId) &&
+    (settingsLayout.overlay.ids.includes(optionId) ||
+        settingsLayout.overlay.prefixes.some((prefix) => optionId.startsWith(prefix)));
 
 export const getSettingDependency = (optionId: string): SettingDependency | undefined =>
     settingsLayout.dependencies.find(
