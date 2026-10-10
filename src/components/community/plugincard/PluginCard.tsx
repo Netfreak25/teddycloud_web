@@ -1,4 +1,4 @@
-import { Card, Typography, Badge, Tooltip, theme } from "antd";
+import { Card, Typography, Badge, Tag, Tooltip, theme } from "antd";
 import { DesktopOutlined, HomeOutlined, DeleteOutlined } from "@ant-design/icons";
 import { useTranslation } from "react-i18next";
 import { canHover } from "../../../utils/browser/browserUtils";
@@ -14,6 +14,7 @@ export interface TeddyCloudPlugin {
     version?: string;
     teddyCloudSection?: string;
     pluginHomepage?: string;
+    hideInNav?: boolean;
     [key: string]: any;
 }
 
@@ -112,6 +113,7 @@ export const PluginCard: React.FC<PluginCardProps> = ({
                 </Tooltip>,
             ]}
         >
+            {plugin.hideInNav === true && <Tag>{t("community.plugins.hiddenInNav")}</Tag>}
             <img
                 style={{
                     maxHeight: 180,

@@ -1,6 +1,6 @@
 import { useTranslation } from "react-i18next";
 import { useNavigate } from "react-router-dom";
-import { Alert, Badge, Button, Col, Empty, Row, Tag, Typography } from "antd";
+import { Alert, Badge, Button, Col, Empty, Pagination, Row, Tag, Typography } from "antd";
 import { AppstoreAddOutlined, QuestionCircleOutlined } from "@ant-design/icons";
 import { usePluginList } from "./hooks/usePluginList";
 import PluginTemplateDownloadButton from "../../common/buttons/PluginTemplateDownloadButton";
@@ -8,6 +8,7 @@ import { PluginCard } from "../plugincard/PluginCard";
 import { PluginDeleteDialog } from "./modals/PluginDeleteModal";
 import { PluginHelpModal } from "./modals/PluginHelpModal";
 import { PluginUploadModal } from "./modals/PluginUploadModal";
+import { PLUGIN_PAGE_SIZES } from "./pluginListState";
 
 const { Paragraph } = Typography;
 
@@ -17,6 +18,16 @@ export const PluginList = () => {
 
     const {
         filteredPlugins,
+        visiblePlugins,
+        hiddenOnly,
+        hiddenPluginCount,
+        pageSize,
+        showAll,
+        currentPage,
+        storageUnavailable,
+        toggleHiddenFilter,
+        changePage,
+        toggleShowAll,
         allSections,
         activeSectionFilters,
         pluginCountBySection,
@@ -40,6 +51,31 @@ export const PluginList = () => {
         handleConfirmDelete,
         handleCancelDelete,
     } = usePluginList();
+
+    const pagination = filteredPlugins.length > 0 && (
+        <div style={{ display: "flex", gap: 16, flexWrap: "wrap", margin: "16px 0" }}>
+            {!showAll && (
+                <Pagination
+                    current={currentPage}
+                    pageSize={pageSize}
+                    total={filteredPlugins.length}
+                    showSizeChanger
+                    pageSizeOptions={PLUGIN_PAGE_SIZES}
+                    onChange={changePage}
+                    showTotal={(total, range) =>
+                        t("community.plugins.pagination.total", {
+                            total,
+                            rangeStart: range[0],
+                            rangeEnd: range[1],
+                        })
+                    }
+                />
+            )}
+            <Button onClick={toggleShowAll}>
+                {t(`community.plugins.pagination.${showAll ? "showPages" : "showAll"}`)}
+            </Button>
+        </div>
+    );
 
     return (
         <>
@@ -77,8 +113,15 @@ export const PluginList = () => {
                     </Button>
                 </Paragraph>
             </div>
-            <Paragraph>
+            <div>
                 <h2>{t("community.plugins.installedPlugins")}</h2>
+                {storageUnavailable && (
+                    <Alert
+                        type="warning"
+                        showIcon
+                        title={t("community.plugins.storageUnavailable")}
+                    />
+                )}
                 <div style={{ marginBottom: 16, display: "flex", gap: 8, flexWrap: "wrap" }}>
                     {allSections.map((section) => {
                         const isChecked = activeSectionFilters.includes(section);
@@ -102,12 +145,18 @@ export const PluginList = () => {
                             </Badge>
                         );
                     })}
+                    <Badge count={hiddenPluginCount} color="grey" size="small" offset={[-8, 4]}>
+                        <Tag.CheckableTag checked={hiddenOnly} onChange={toggleHiddenFilter}>
+                            {t("community.plugins.filter.hidden")}
+                        </Tag.CheckableTag>
+                    </Badge>
                 </div>
+                {pagination}
                 {filteredPlugins.length === 0 ? (
                     <Empty description={t("community.plugins.empty")} />
                 ) : (
                     <Row gutter={8}>
-                        {filteredPlugins.map((plugin) => (
+                        {visiblePlugins.map((plugin) => (
                             <Col
                                 key={plugin.pluginId}
                                 xs={24}
@@ -136,6 +185,7 @@ export const PluginList = () => {
                         ))}
                     </Row>
                 )}
+                {pagination}
 
                 <PluginHelpModal open={isVisibleHelpModal} onClose={closeHelp} />
                 <PluginUploadModal
@@ -152,7 +202,7 @@ export const PluginList = () => {
                     onConfirm={handleConfirmDelete}
                     onCancel={handleCancelDelete}
                 />
-            </Paragraph>
+            </div>
         </>
     );
 };

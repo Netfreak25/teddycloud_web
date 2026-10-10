@@ -10,6 +10,7 @@ const createPluginJson = (): string =>
   "version": "0.1.0",
   "description": "Minimal starter for TeddyCloud plugins with theme compatibility and version display. The index.html contains a sample section as a placeholder. Extend the logic in script.js and adjust the markup/style as needed.",
   "standalone": false,
+  "hideInNav": false,
   "pluginHomepage": "Homepage of the plugin (optionally)",
   "teddyCloudSection": "one of: home|tonies|tonieboxes|settings|community (optionally)",
   "icon": "name of an icon from Ant Design icons (optional)"
@@ -427,6 +428,7 @@ You can add more files as needed, for example:
 - \`version\`: Plugin version (semantic versioning is recommended)
 - \`description\`: Short description of what the plugin does
 - \`standalone\`: true (as boolean, no quotes!) if plugin shall be run in standalone mode without header, sidebar and footer. It will be opened in a new tab.
+- \`hideInNav\`: Optional boolean, defaults to false. Set to true (without quotes) to hide the plugin from navigation. It remains available in the plugin overview and through its direct link.
 - \`pluginHomepage\`: Optional project or documentation URL
 - \`teddyCloudSection\`: Optional section of the TeddyCloud UI (home|tonies|tonieboxes|settings|community)
 - \`icon\`: Optional Ant Design icon name

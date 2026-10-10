@@ -2,6 +2,7 @@
 
 ## 0.7.0
 
+- gui: Added plugin navigation visibility, hidden-plugin filtering and pagination, adapted from [PR #348](https://github.com/toniebox-reverse-engineering/teddycloud_web/pull/348)
 - Added TB2 live playback state, volume and compact remote controls to Toniebox cards
 - Added disabled TB2 cloud and MQTT upstream placeholders with a header connection status
 - First TB2 support (not for daily use! Search for beta testers open: [https://t.me/toniebox_reverse_engineering/74847](https://t.me/toniebox_reverse_engineering/74847))

@@ -6,8 +6,15 @@ import { defaultAPIConfig } from "../../../../config/defaultApiConfig";
 import { useTeddyCloud } from "../../../../provider/TeddyCloudProvider";
 import { NotificationTypeEnum } from "../../../../types/teddyCloudNotificationTypes";
 import { TeddyCloudPlugin } from "../../plugincard/PluginCard";
+import {
+    DEFAULT_PLUGIN_LIST_STATE,
+    filterPluginList,
+    normalizePluginListState,
+    paginatePlugins,
+} from "../pluginListState";
 
 const api = new TeddyCloudApi(defaultAPIConfig());
+const STORAGE_KEY = "pluginListState";
 
 export const usePluginList = () => {
     const { t } = useTranslation();
@@ -20,6 +27,29 @@ export const usePluginList = () => {
     const [file, setFile] = useState<File | null>(null);
     const [uploading, setUploading] = useState(false);
     const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
+    const [hiddenOnly, setHiddenOnly] = useState(false);
+    const [page, setPage] = useState(1);
+    const [storageUnavailable, setStorageUnavailable] = useState(false);
+    const [{ pageSize, showAll }, setPreferences] = useState(() => {
+        try {
+            return normalizePluginListState(
+                JSON.parse(localStorage.getItem(STORAGE_KEY) || "null"),
+            );
+        } catch (error) {
+            console.warn("Could not read plugin list preferences; using defaults", error);
+            return DEFAULT_PLUGIN_LIST_STATE;
+        }
+    });
+
+    useEffect(() => {
+        if (storageUnavailable) return;
+        try {
+            localStorage.setItem(STORAGE_KEY, JSON.stringify({ pageSize, showAll }));
+        } catch (error) {
+            console.warn("Could not save plugin list preferences", error);
+            setStorageUnavailable(true);
+        }
+    }, [pageSize, showAll, storageUnavailable]);
 
     const allSections = useMemo(
         () =>
@@ -51,17 +81,46 @@ export const usePluginList = () => {
 
     const filteredPlugins = useMemo(
         () =>
-            (plugins as TeddyCloudPlugin[]).filter((plugin) => {
-                const section = plugin.teddyCloudSection || t("community.plugins.filter.unknown");
-                return activeSectionFilters.includes(section);
-            }),
-        [plugins, activeSectionFilters, t],
+            filterPluginList(
+                plugins as TeddyCloudPlugin[],
+                activeSectionFilters,
+                hiddenOnly,
+                t("community.plugins.filter.unknown"),
+            ),
+        [plugins, activeSectionFilters, hiddenOnly, t],
+    );
+    const hiddenPluginCount = plugins.filter((plugin) => plugin.hideInNav === true).length;
+    const { items: visiblePlugins, currentPage } = paginatePlugins(
+        filteredPlugins,
+        page,
+        pageSize,
+        showAll,
     );
 
+    useEffect(() => {
+        setPage(currentPage);
+    }, [currentPage]);
+
     const toggleSectionFilter = (section: string, checked: boolean) => {
+        setPage(1);
         setActiveSectionFilters((prev) =>
             checked ? [...prev, section] : prev.filter((s) => s !== section),
         );
+    };
+
+    const toggleHiddenFilter = (checked: boolean) => {
+        setHiddenOnly(checked);
+        setPage(1);
+    };
+
+    const changePage = (current: number, size: number) => {
+        setPage(size === pageSize ? current : 1);
+        setPreferences({ pageSize: size, showAll: false });
+    };
+
+    const toggleShowAll = () => {
+        setPreferences({ pageSize, showAll: !showAll });
+        setPage(1);
     };
 
     const openHelp = () => setIsVisibleHelpModal(true);
@@ -164,12 +223,22 @@ export const usePluginList = () => {
         // data
         plugins: plugins as TeddyCloudPlugin[],
         filteredPlugins,
+        visiblePlugins,
+        hiddenOnly,
+        hiddenPluginCount,
+        pageSize,
+        showAll,
+        currentPage,
+        storageUnavailable,
         allSections,
         activeSectionFilters,
         pluginCountBySection,
 
         // filters
         toggleSectionFilter,
+        toggleHiddenFilter,
+        changePage,
+        toggleShowAll,
 
         // help modal
         isVisibleHelpModal,
