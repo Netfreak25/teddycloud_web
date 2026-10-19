@@ -2,17 +2,9 @@ import { defaultAPIConfig } from "../../../../config/defaultApiConfig";
 import { TeddyCloudApi } from "../../../../api";
 import { NotificationTypeEnum } from "../../../../types/teddyCloudNotificationTypes";
 import { TonieCardProps } from "../../../../types/tonieTypes";
+import { cacheDownloadReason } from "../../common/utils/cacheDownloadUtils";
 
 const api = new TeddyCloudApi(defaultAPIConfig());
-
-type V3DownloadResult = {
-    success?: boolean;
-    sourceAssigned?: boolean;
-    source?: string;
-    assignmentReason?: string;
-    stage?: string;
-    message?: string;
-};
 
 type UseTonieCardActionsParams = {
     tonieCard: TonieCardProps;
@@ -40,6 +32,29 @@ export const useTonieCardActions = ({
     closeLoadingNotification,
     fetchUpdatedTonieCard,
 }: UseTonieCardActionsParams) => {
+    const [submitted, setSubmitted] = useState(false);
+    const statuses = Object.values(tonieCard.cacheState?.download || {});
+    const active = statuses.some(({ state }) => state === "queued" || state === "running");
+    const downloadPending = submitted || active;
+    const refreshRef = useRef(fetchUpdatedTonieCard);
+    refreshRef.current = fetchUpdatedTonieCard;
+    useEffect(() => {
+        if (statuses.length && !active) setSubmitted(false);
+    }, [tonieCard.cacheState?.download, active]);
+    useEffect(() => {
+        if (!downloadPending) return;
+        let refreshing = false;
+        const timer = window.setInterval(async () => {
+            if (refreshing) return;
+            refreshing = true;
+            try {
+                await refreshRef.current();
+            } finally {
+                refreshing = false;
+            }
+        }, 1500);
+        return () => window.clearInterval(timer);
+    }, [downloadPending]);
     const notifySuccess = (message: string, description: string) => {
         addNotification(NotificationTypeEnum.Success, message, description, t("tonies.title"));
     };
@@ -130,12 +145,10 @@ export const useTonieCardActions = ({
     };
 
     const handleBackgroundDownload = async () => {
-        const path = tonieCard.downloadTriggerUrl;
-        if (!path) return;
+        if (!tonieCard.downloadTriggerUrl || downloadPending) return;
 
         const key = "loading" + tonieCard.ruid;
-        let v3Result: V3DownloadResult | undefined;
-
+        setSubmitted(true);
         try {
             addLoadingNotification(
                 key,
@@ -146,17 +159,41 @@ export const useTonieCardActions = ({
                 }).replace(' "" ', " "),
             );
 
-            const response = await api.apiGetTeddyCloudApiRaw(path);
-            if (tonieCard.downloadTriggerKind === "v3") {
-                v3Result = (await response.json()) as V3DownloadResult;
-                if (v3Result.success !== true) {
-                    const detail = [v3Result.stage, v3Result.message].filter(Boolean).join(": ");
-                    throw new Error(detail || "V3 download failed");
-                }
-            } else {
+            // System audio retains its existing endpoint; the worker accepts only content tags.
+            const systemTonie = tonieCard.ruid.startsWith("0000000");
+            const response = systemTonie
+                ? await api.apiGetTeddyCloudApiRaw(tonieCard.downloadTriggerUrl)
+                : await api.apiPostTeddyCloudRaw(
+                      `/api/content/cache/${encodeURIComponent(tonieCard.ruid)}`,
+                      "",
+                      overlay,
+                  );
+            if (!response.ok) {
+                const result = await response.json().catch(() => ({}));
+                throw new Error(
+                    cacheDownloadReason(result.error, t) ||
+                        result.message ||
+                        `HTTP ${response.status}`,
+                );
+            }
+            if (systemTonie) {
                 await response.blob();
+                setSubmitted(false);
+                notifySuccess(
+                    t("tonies.messages.downloadedFile"),
+                    t("tonies.messages.downloadedFileDetails", {
+                        model: modelTitle,
+                        ruid: tonieCard.ruid,
+                    }),
+                );
+            } else {
+                notifySuccess(
+                    t("tonies.cacheDownload.accepted"),
+                    t("tonies.cacheDownload.acceptedDetails"),
+                );
             }
         } catch (error) {
+            setSubmitted(false);
             closeLoadingNotification(key);
             notifyError(
                 t("tonies.messages.errorDuringDownload"),
@@ -170,25 +207,6 @@ export const useTonieCardActions = ({
         }
 
         closeLoadingNotification(key);
-        if (v3Result && v3Result.sourceAssigned !== true) {
-            notifySuccess(
-                t("tonies.messages.downloadedV3CacheOnly"),
-                t("tonies.messages.downloadedV3CacheOnlyDetails", {
-                    model: modelTitle,
-                    ruid: tonieCard.ruid,
-                    reason: v3Result.assignmentReason || "not_assigned",
-                }).replace(' "" ', " "),
-            );
-        } else {
-            notifySuccess(
-                t("tonies.messages.downloadedFile"),
-                t("tonies.messages.downloadedFileDetails", {
-                    model: modelTitle,
-                    ruid: tonieCard.ruid,
-                }).replace(' "" ', " "),
-            );
-        }
-
         try {
             await fetchUpdatedTonieCard();
         } catch (error) {
@@ -207,5 +225,7 @@ export const useTonieCardActions = ({
         handleLiveClick,
         handleNoCloudClick,
         handleBackgroundDownload,
+        downloadPending,
     };
 };
+import { useEffect, useRef, useState } from "react";

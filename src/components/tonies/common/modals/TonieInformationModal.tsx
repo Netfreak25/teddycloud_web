@@ -14,6 +14,12 @@ import ConfirmationDialog from "../../../common/modals/ConfirmationModal";
 import { useTeddyCloud } from "../../../../provider/TeddyCloudProvider";
 import { NotificationTypeEnum } from "../../../../types/teddyCloudNotificationTypes";
 import { useAudioContext } from "../../../../provider/AudioProvider";
+import { downloadNativeAudioZip } from "../../../../utils/audio/nativeCollection";
+import { cacheDownloadReason } from "../utils/cacheDownloadUtils";
+import {
+    loadTonieNativePlaybackItem,
+    usesNativeTonieAudio,
+} from "../../../../utils/audio/tonieAudio";
 import { resolveTonieDisplayPicture, toImageSrc } from "../utils/imagePathUtils";
 
 const api = new TeddyCloudApi(defaultAPIConfig());
@@ -46,7 +52,7 @@ const TonieInformationModal: React.FC<InformationModalProps> = ({
 }) => {
     const { t } = useTranslation();
     const { token } = useToken();
-    const { playAudio } = useAudioContext();
+    const { playAudio, playPlaybackItem } = useAudioContext();
     const { addNotification } = useTeddyCloud();
 
     const [isConfirmHideModalOpen, setIsConfirmHideModalOpen] = useState(false);
@@ -57,6 +63,16 @@ const TonieInformationModal: React.FC<InformationModalProps> = ({
     const [sourceTracks, setSourceTracks] = useState<string[]>([]);
 
     const [isDownloading, setIsDownloading] = useState<boolean>(false);
+    const nativeTonie =
+        "ruid" in tonieCardOrTAFRecord && usesNativeTonieAudio(tonieCardOrTAFRecord)
+            ? tonieCardOrTAFRecord
+            : undefined;
+    const downloadBlockedReason = cacheDownloadReason(
+        "cacheState" in tonieCardOrTAFRecord
+            ? tonieCardOrTAFRecord.cacheState?.downloadBlockedReason
+            : undefined,
+        t,
+    );
     const modelPicture = resolveTonieDisplayPicture(
         "customImage" in tonieCardOrTAFRecord ? tonieCardOrTAFRecord.customImage : undefined,
         tonieCardOrTAFRecord.tonieInfo.picture,
@@ -95,19 +111,56 @@ const TonieInformationModal: React.FC<InformationModalProps> = ({
         );
     };
 
+    const handleNativePlay = async (chapter: number) => {
+        if (!nativeTonie) return;
+        try {
+            playPlaybackItem(
+                await loadTonieNativePlaybackItem(nativeTonie, overlay || "", (number) =>
+                    t("tonieboxes.live.chapter", { number }),
+                ),
+                chapter,
+            );
+        } catch (error) {
+            addNotification(
+                NotificationTypeEnum.Error,
+                t("fileBrowser.nativeCollection.playFailed"),
+                String(error),
+            );
+        }
+    };
+
     const handleDownload = async (url: string, filename: string) => {
         setIsDownloading(true);
-        const response = await fetch(url);
-        const blob = await response.blob();
-        const blobUrl = window.URL.createObjectURL(blob);
-        const link = document.createElement("a");
-        link.href = blobUrl;
-        link.download = filename;
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
-        window.URL.revokeObjectURL(blobUrl);
-        setIsDownloading(false);
+        try {
+            if (nativeTonie) {
+                await downloadNativeAudioZip(
+                    await loadTonieNativePlaybackItem(nativeTonie, overlay || "", (number) =>
+                        t("tonieboxes.live.chapter", { number }),
+                    ),
+                );
+                return;
+            }
+            const response = await fetch(url);
+            if (!response.ok) throw new Error(`HTTP ${response.status}`);
+            const blob = await response.blob();
+            const blobUrl = window.URL.createObjectURL(blob);
+            try {
+                const link = document.createElement("a");
+                link.href = blobUrl;
+                link.download = filename;
+                link.click();
+            } finally {
+                window.URL.revokeObjectURL(blobUrl);
+            }
+        } catch (error) {
+            addNotification(
+                NotificationTypeEnum.Error,
+                t("fileBrowser.nativeCollection.downloadFailed"),
+                String(error),
+            );
+        } finally {
+            setIsDownloading(false);
+        }
     };
 
     const toniePlayedOn =
@@ -323,6 +376,11 @@ const TonieInformationModal: React.FC<InformationModalProps> = ({
                     <></>
                 )}
                 <div>
+                    {downloadBlockedReason && (
+                        <p>
+                            <Text type="secondary">{downloadBlockedReason}</Text>
+                        </p>
+                    )}
                     {"valid" in tonieCardOrTAFRecord ? (
                         <p>
                             <strong>{t("tonies.infoModal.valid")}</strong>{" "}
@@ -343,7 +401,25 @@ const TonieInformationModal: React.FC<InformationModalProps> = ({
                     ) : (
                         ""
                     )}
-                    {informationFromSource ? (
+                    {nativeTonie ? (
+                        <>
+                            <strong>{t("tonies.infoModal.tracklist")}</strong>
+                            <Flex vertical gap={4}>
+                                {(nativeTonie.playlist?.tracks || nativeTonie.tonieInfo.tracks).map(
+                                    (track, index) => (
+                                        <Flex key={index} gap={16}>
+                                            <PlayCircleOutlined
+                                                onClick={() => void handleNativePlay(index)}
+                                            />
+                                            <span>
+                                                {index + 1}. {track}
+                                            </span>
+                                        </Flex>
+                                    ),
+                                )}
+                            </Flex>
+                        </>
+                    ) : informationFromSource ? (
                         sourceTracks && sourceTracks.length > 0 ? (
                             <>
                                 <strong>{t("tonies.infoModal.tracklist")}</strong>
@@ -433,9 +509,10 @@ const TonieInformationModal: React.FC<InformationModalProps> = ({
                     ) : (
                         <></>
                     )}
-                    {"exists" in tonieCardOrTAFRecord &&
-                    tonieCardOrTAFRecord.exists &&
-                    "audioUrl" in tonieCardOrTAFRecord ? (
+                    {nativeTonie ||
+                    ("exists" in tonieCardOrTAFRecord &&
+                        tonieCardOrTAFRecord.exists &&
+                        "audioUrl" in tonieCardOrTAFRecord) ? (
                         <p
                             style={{
                                 display: "flex",
@@ -448,8 +525,10 @@ const TonieInformationModal: React.FC<InformationModalProps> = ({
                                     ? () =>
                                           handleDownload(
                                               import.meta.env.VITE_APP_TEDDYCLOUD_API_URL +
-                                                  tonieCardOrTAFRecord.audioUrl,
-                                              sourceTitle ? sourceTitle : modelTitle + ".ogg",
+                                                  ("audioUrl" in tonieCardOrTAFRecord
+                                                      ? tonieCardOrTAFRecord.audioUrl
+                                                      : ""),
+                                              (sourceTitle || modelTitle) + ".ogg",
                                           )
                                     : undefined
                             }
@@ -467,7 +546,11 @@ const TonieInformationModal: React.FC<InformationModalProps> = ({
                             ) : (
                                 <DownloadOutlined key="download" />
                             )}
-                            {t("tonies.infoModal.download")}
+                            {t(
+                                nativeTonie
+                                    ? "tonies.infoModal.downloadNative"
+                                    : "tonies.infoModal.download",
+                            )}
                         </p>
                     ) : (
                         ""

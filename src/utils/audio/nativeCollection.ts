@@ -91,20 +91,46 @@ export const loadNativeCollectionFromSource = async (
 export const nativeCollectionToPlaybackItem = (
     collection: NativeCollectionSummary,
     overlay = "",
-    metadata?: {
-        title?: string;
-        subtitle?: string;
-        picture?: string;
-        tracks?: string[];
-        fallbackTrackTitle?: (number: number) => string;
-    },
+    metadata?: NativeAudioMetadata,
+): AudioPlaybackItem =>
+    nativeAudioToPlaybackItem(
+        {
+            id: collection.contentHash,
+            searchText: collection.chapters.map((chapter) => chapter.originalName).join(" "),
+            chapters: collection.chapters.map((chapter) => ({
+                index: chapter.index,
+                url: buildLibraryFileUrl(chapter.path, overlay),
+                size: chapter.fileSize,
+            })),
+        },
+        metadata,
+    );
+
+export type NativeAudioMetadata = {
+    title?: string;
+    subtitle?: string;
+    picture?: string;
+    tracks?: string[];
+    fallbackTrackTitle?: (number: number) => string;
+};
+
+export type NativeAudio = {
+    id: string;
+    searchText?: string;
+    chapters: { index: number; url: string; size: number }[];
+};
+
+/** Library and cache-only chapters share the existing URL-based player. */
+export const nativeAudioToPlaybackItem = (
+    audio: NativeAudio,
+    metadata?: NativeAudioMetadata,
 ): AudioPlaybackItem => {
     const metadataTracks =
-        metadata?.tracks?.length === collection.chapterCount &&
+        metadata?.tracks?.length === audio.chapters.length &&
         metadata.tracks.every((title) => title.trim().length > 0)
             ? metadata.tracks.map((title) => title.trim())
             : undefined;
-    const trackTitles = collection.chapters.map(
+    const trackTitles = audio.chapters.map(
         (_chapter, index) =>
             metadataTracks?.[index] ||
             metadata?.fallbackTrackTitle?.(index + 1) ||
@@ -112,13 +138,13 @@ export const nativeCollectionToPlaybackItem = (
     );
 
     return {
-        id: collection.contentHash,
+        id: audio.id,
         kind: "tb2_native_collection",
-        title: metadata?.title || `TB2 ${collection.contentHash.slice(0, 12)}`,
+        title: metadata?.title || `TB2 ${audio.id.slice(0, 12)}`,
         subtitle: metadata?.subtitle || "Ogg/Opus",
         picture: metadata?.picture || "/img_unknown.png",
-        sources: collection.chapters.map((chapter, index) => ({
-            url: buildLibraryFileUrl(chapter.path, overlay),
+        sources: audio.chapters.map((chapter, index) => ({
+            url: chapter.url,
             title: trackTitles[index],
         })),
         tracks: trackTitles.map((title, index) => ({
@@ -127,16 +153,51 @@ export const nativeCollectionToPlaybackItem = (
             startSeconds: 0,
         })),
         searchText: [
-            collection.contentHash,
+            audio.id,
+            audio.searchText,
             metadata?.title,
             metadata?.subtitle,
             ...trackTitles,
-            ...collection.chapters.map((chapter) => chapter.originalName),
         ]
             .filter(Boolean)
             .join(" "),
     };
 };
+
+/** Export only audio: renamed chapter files must not retain a broken library manifest. */
+export const downloadNativeAudioZip = async (item: AudioPlaybackItem) => {
+    const zip = new JSZip();
+    const width = Math.max(3, String(item.sources.length).length);
+    for (const [index, source] of item.sources.entries()) {
+        const response = await fetch(source.url);
+        if (!response.ok) throw new Error(`HTTP ${response.status}`);
+        const title = safeAudioFilename(source.title) || `Chapter ${index + 1}`;
+        zip.file(
+            `${String(index + 1).padStart(width, "0")} - ${title}.opus`,
+            await response.blob(),
+            {
+                compression: "STORE",
+            },
+        );
+    }
+    const blob = await zip.generateAsync({ type: "blob", compression: "STORE" });
+    const url = URL.createObjectURL(blob);
+    try {
+        const anchor = document.createElement("a");
+        anchor.href = url;
+        anchor.download = `TB2-${safeAudioFilename(item.title) || "audio"}.zip`;
+        anchor.click();
+    } finally {
+        URL.revokeObjectURL(url);
+    }
+};
+
+export const safeAudioFilename = (value: string) =>
+    value
+        .replace(/[<>:"/\\|?*\u0000-\u001f\u007f]/g, "_")
+        .trim()
+        .slice(0, 120)
+        .replace(/[. ]+$/, "");
 
 const fetchLibraryFile = async (path: string, overlay: string) => {
     const response = await fetch(buildLibraryFileUrl(path, overlay));

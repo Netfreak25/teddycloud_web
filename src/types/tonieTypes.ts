@@ -21,6 +21,11 @@ export type ContentPlaylist = {
 
 export type ContentPlaylistUpdate = Pick<ContentPlaylist, "title" | "tracks">;
 
+export type ContentCacheDownload = {
+    state: "queued" | "running" | "complete" | "skipped" | "failed";
+    reason?: string;
+};
+
 export type TonieCardProps = {
     uid: string;
     ruid: string;
@@ -43,6 +48,8 @@ export type TonieCardProps = {
         v3ContentVersion?: number;
         v3Source?: string;
         preferredOriginalKind?: "taf" | "v3";
+        download?: { taf?: ContentCacheDownload; v3?: ContentCacheDownload };
+        downloadBlockedReason?: string;
     };
     audioUrl: string;
     downloadTriggerUrl: string;

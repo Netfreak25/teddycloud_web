@@ -253,7 +253,7 @@ export const useTonieCardSaveFlow = ({
             restoredOriginalSource !== null &&
             restoredOriginalSource.length > 0 &&
             selectedSource === restoredOriginalSource;
-        if (!tonieCard.nocloud && !isOriginalCacheSource) {
+        if (selectedSource.trim() && !tonieCard.nocloud && !isOriginalCacheSource) {
             await handleNoCloudClick();
         }
         const shouldBeLive = selectedSource.startsWith("http");

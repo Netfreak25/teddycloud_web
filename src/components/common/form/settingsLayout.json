@@ -49,7 +49,9 @@
                 "core.tonies_json_auto_update",
                 "core.full_taf_validation",
                 "core.tap_taf_validation",
-                "core.track_pos_taf_validation"
+                "core.track_pos_taf_validation",
+                "cloud.cacheBothFormatsOnDownload",
+                "cloud.cacheBothFormatsOnPlayback"
             ]
         },
         {
@@ -235,7 +237,11 @@
         }
     ],
     "overlay": {
-        "excludedIds": ["cloud.cacheOtaV3BothSlots"],
+        "excludedIds": [
+            "cloud.cacheOtaV3BothSlots",
+            "cloud.cacheBothFormatsOnDownload",
+            "cloud.cacheBothFormatsOnPlayback"
+        ],
         "ids": [
             "core.certdir",
             "core.contentdir",

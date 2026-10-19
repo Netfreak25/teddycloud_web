@@ -7,6 +7,7 @@ import {
     DownloadOutlined,
     EditOutlined,
     InfoCircleOutlined,
+    LoadingOutlined,
     PlayCircleOutlined,
     RetweetOutlined,
     StopOutlined,
@@ -33,11 +34,8 @@ import { useTooltipInfoByModel } from "./hooks/useTooltipInfoByModel";
 import { getInfoForTooltip } from "./utils/tooltipInfo";
 import { useTonieCardSaveFlow } from "./hooks/useTonieCardSaveFlow";
 import { TooltipInfo, ValidateStatus } from "./TonieCardTypes";
-import {
-    isNativeCollectionSource,
-    loadNativeCollectionFromSource,
-    nativeCollectionToPlaybackItem,
-} from "../../../utils/audio/nativeCollection";
+import { loadTonieNativePlaybackItem, usesNativeTonieAudio } from "../../../utils/audio/tonieAudio";
+import { cacheDownloadReason } from "../common/utils/cacheDownloadUtils";
 
 const api = new TeddyCloudApi(defaultAPIConfig());
 
@@ -245,44 +243,29 @@ export const TonieCard: React.FC<{
         overlay,
     });
 
-    const { handleLiveClick, handleNoCloudClick, handleBackgroundDownload } = useTonieCardActions({
-        tonieCard,
-        overlay,
-        modelTitle,
-        t,
-        addNotification,
-        addLoadingNotification,
-        closeLoadingNotification,
-        fetchUpdatedTonieCard,
-    });
+    const { handleLiveClick, handleNoCloudClick, handleBackgroundDownload, downloadPending } =
+        useTonieCardActions({
+            tonieCard,
+            overlay,
+            modelTitle,
+            t,
+            addNotification,
+            addLoadingNotification,
+            closeLoadingNotification,
+            fetchUpdatedTonieCard,
+        });
 
     // ------------------------
     // Handlers – playback
     // ------------------------
 
     const handlePlayPauseClick = async () => {
-        if (isNativeCollectionSource(tonieCard.source || "")) {
+        if (usesNativeTonieAudio(tonieCard)) {
             try {
-                const collection = await loadNativeCollectionFromSource(tonieCard.source, overlay);
                 playPlaybackItem(
-                    nativeCollectionToPlaybackItem(collection, overlay, {
-                        title:
-                            tonieCard.playlist?.title ||
-                            tonieCard.sourceInfo?.series ||
-                            tonieCard.tonieInfo.series,
-                        subtitle: tonieCard.sourceInfo?.episode || tonieCard.tonieInfo.episode,
-                        picture: tonieCard.sourceInfo?.picture || picture,
-                        tracks: [
-                            tonieCard.playlist?.tracks,
-                            tonieCard.sourceInfo?.tracks,
-                            tonieCard.tonieInfo.tracks,
-                        ].find(
-                            (candidate) =>
-                                candidate?.length === collection.chapterCount &&
-                                candidate.every((track) => track.trim().length > 0),
-                        ),
-                        fallbackTrackTitle: (number) => t("tonieboxes.live.chapter", { number }),
-                    }),
+                    await loadTonieNativePlaybackItem(tonieCard, overlay, (number) =>
+                        t("tonieboxes.live.chapter", { number }),
+                    ),
                 );
             } catch (error) {
                 addNotification(
@@ -497,37 +480,52 @@ export const TonieCard: React.FC<{
         />
     );
 
-    const playAction =
+    const canPlay =
         tonieCard.valid ||
         (tonieCard.source || "").startsWith("http") ||
-        isNativeCollectionSource(tonieCard.source || "") ? (
-            <PlayCircleOutlined key="playpause" onClick={() => void handlePlayPauseClick()} />
-        ) : tonieCard.downloadTriggerUrl && tonieCard.downloadTriggerUrl.length > 0 && !readOnly ? (
-            tonieCard.downloadTriggerKind !== "v3" && !toniesCloudAvailable ? (
-                <Tooltip title={t("tonies.connectionToBoxineNotAvailable")}>
-                    <div style={{ position: "relative", display: "inline-block" }}>
-                        <StopOutlined
-                            style={{
-                                position: "absolute",
-                                top: 4,
-                                left: 0,
-                                color: token.colorError,
-                            }}
-                        />
-                        <DownloadOutlined />
-                    </div>
-                </Tooltip>
-            ) : (
-                <DownloadOutlined key="download" onClick={handleBackgroundDownload} />
-            )
-        ) : (
-            <Tooltip placement="top" title={t("tonies.noPlayableContentHint")}>
-                <PlayCircleOutlined
-                    key="playpause"
-                    style={{ cursor: "default", color: token.colorTextDisabled }}
-                />
+        usesNativeTonieAudio(tonieCard);
+    const downloadStatus = Object.entries(tonieCard.cacheState?.download || {})
+        .map(
+            ([kind, value]) =>
+                `${kind.toUpperCase()}: ${t(`tonies.cacheDownload.${value.state}`)}${value.reason ? ` (${cacheDownloadReason(value.reason, t)})` : ""}`,
+        )
+        .join(" · ");
+    const backendBlockedReason = tonieCard.cacheState?.downloadBlockedReason;
+    const blockedReason = cacheDownloadReason(
+        backendBlockedReason !== undefined
+            ? backendBlockedReason
+            : tonieCard.nocloud
+              ? "nocloud"
+              : tonieCard.downloadTriggerKind !== "v3" && !toniesCloudAvailable
+                ? "boxine_forwarding_disabled"
+                : undefined,
+        t,
+    );
+    const downloadAction =
+        !readOnly && (downloadPending || tonieCard.downloadTriggerUrl || backendBlockedReason) ? (
+            <Tooltip
+                key="download"
+                title={blockedReason || downloadStatus || t("tonies.cacheDownload.download")}
+            >
+                {downloadPending ? (
+                    <LoadingOutlined spin />
+                ) : blockedReason ? (
+                    <StopOutlined />
+                ) : (
+                    <DownloadOutlined onClick={handleBackgroundDownload} />
+                )}
             </Tooltip>
-        );
+        ) : null;
+    const playAction = canPlay ? (
+        <PlayCircleOutlined key="playpause" onClick={() => void handlePlayPauseClick()} />
+    ) : (
+        <Tooltip placement="top" title={blockedReason || t("tonies.noPlayableContentHint")}>
+            <PlayCircleOutlined
+                key="playpause"
+                style={{ cursor: "default", color: token.colorTextDisabled }}
+            />
+        </Tooltip>
+    );
 
     const cloudAction = (
         <CloudSyncOutlined
@@ -572,6 +570,7 @@ export const TonieCard: React.FC<{
               infoAction,
               <EditOutlined key="edit" onClick={showModelModal} />,
               playAction,
+              ...(downloadAction ? [downloadAction] : []),
               cloudAction,
               liveAction,
           ];
@@ -685,6 +684,11 @@ export const TonieCard: React.FC<{
                     title={tonieCard.tonieInfo.episode || tonieCard.uid}
                     description={tonieCard.tonieInfo.episode ? tonieCard.uid : undefined}
                 />
+                {downloadStatus && (
+                    <Text type="secondary" style={{ display: "block", marginTop: 8 }}>
+                        {downloadStatus}
+                    </Text>
+                )}
             </Card>
 
             <TonieInformationModal

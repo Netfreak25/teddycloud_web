@@ -26,6 +26,7 @@ import {
 } from "../../utils/audio/nativeCollection";
 import { tonieToPlaybackItem } from "../../utils/audio/playbackItem";
 import { resolveTonieDisplayPicture } from "../../components/tonies/common/utils/imagePathUtils";
+import { loadTonieNativePlaybackItem, usesNativeTonieAudio } from "../../utils/audio/tonieAudio";
 
 type TeddyAudioPlayerPageProps = {
     standalone?: boolean;
@@ -54,6 +55,7 @@ export const TeddyAudioPlayerPage: React.FC<TeddyAudioPlayerPageProps> = ({
     const [currentChapter, setCurrentChapter] = useState(startChapter);
     const [nativeRecords, setNativeRecords] = useState<Record[]>([]);
     const [nativeLoading, setNativeLoading] = useState(true);
+    const [cachedNativeItems, setCachedNativeItems] = useState<AudioPlaybackItem[]>([]);
     const [playerKey, setPlayerKey] = useState(0);
 
     const openStandalone = () => {
@@ -94,7 +96,7 @@ export const TeddyAudioPlayerPage: React.FC<TeddyAudioPlayerPageProps> = ({
     const playableTonieCards = useMemo(() => {
         const seen = new Set<string>();
         return tonies.filter((tonie) => {
-            if (tonie.source.startsWith("lib://by/contentHash/")) return false;
+            if (usesNativeTonieAudio(tonie)) return false;
             const isPlayable = tonie.valid || tonie.source.startsWith("http");
             if (!isPlayable) return false;
 
@@ -105,6 +107,34 @@ export const TeddyAudioPlayerPage: React.FC<TeddyAudioPlayerPageProps> = ({
             return true;
         });
     }, [tonies]);
+
+    useEffect(() => {
+        let cancelled = false;
+        const candidates = tonies.filter(
+            (tonie) =>
+                usesNativeTonieAudio(tonie) &&
+                ((!tonie.source && !tonie.cacheState?.v3Source) ||
+                    tonie.ruid.toUpperCase() === tonieRuid?.toUpperCase()),
+        );
+        void Promise.all(
+            candidates.map(async (tonie) => {
+                try {
+                    return await loadTonieNativePlaybackItem(tonie, overlay || "", (number) =>
+                        t("tonieboxes.live.chapter", { number }),
+                    );
+                } catch (error) {
+                    console.warn("Native cached audio unavailable", tonie.ruid, error);
+                    return undefined;
+                }
+            }),
+        ).then((items) => {
+            if (!cancelled)
+                setCachedNativeItems(items.filter((item): item is AudioPlaybackItem => !!item));
+        });
+        return () => {
+            cancelled = true;
+        };
+    }, [tonies, overlay, tonieRuid, t]);
 
     useEffect(() => {
         let cancelled = false;
@@ -175,13 +205,13 @@ export const TeddyAudioPlayerPage: React.FC<TeddyAudioPlayerPageProps> = ({
             });
         });
         const seen = new Set<string>();
-        return [...standardItems, ...nativeItems].filter((item) => {
+        return [...standardItems, ...nativeItems, ...cachedNativeItems].filter((item) => {
             const key = `${item.kind}:${item.id}`;
             if (seen.has(key)) return false;
             seen.add(key);
             return true;
         });
-    }, [nativeRecords, overlay, playableTonieCards, tonies]);
+    }, [nativeRecords, cachedNativeItems, overlay, playableTonieCards, tonies, tonieRuid]);
 
     useEffect(() => {
         const item = contentHash
