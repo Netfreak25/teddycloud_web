@@ -5,9 +5,11 @@
 declare module "/web/wasm/taf_encoder.js" {
     interface TafEncoderModule {
         _taf_encoder_create(audioId: number, bitrate: number): number;
+        _opus_encoder_create_file(audioId: number, bitrate: number): number;
         _taf_encoder_encode(ctx: number, pcmDataPtr: number, numSamples: number): number;
         _taf_encoder_new_chapter(ctx: number): number;
         _taf_encoder_finalize(ctx: number): number;
+        _taf_encoder_get_error(ctx: number): number;
         _taf_encoder_get_buffer(ctx: number): number;
         _taf_encoder_get_size(ctx: number): number;
         _taf_encoder_free(ctx: number): void;
@@ -17,5 +19,8 @@ declare module "/web/wasm/taf_encoder.js" {
         HEAPU8: Uint8Array;
     }
 
-    export default function createTafEncoder(): Promise<TafEncoderModule>;
+    export default function createTafEncoder(options: {
+        locateFile(name: string): string;
+        tafWrite(offset: number, pointer: number, length: number): number;
+    }): Promise<TafEncoderModule>;
 }

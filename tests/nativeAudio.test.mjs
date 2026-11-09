@@ -101,6 +101,63 @@ test("native playback shares ordered URLs and rejects partial title mappings", (
     );
 });
 
+test("uploaded native collection metadata wins consistently without changing chapter URLs", async () => {
+    const hash = "a".repeat(64);
+    const manifest = {
+        format: "ogg-opus",
+        contentHash: hash,
+        title: "My audiobook",
+        chapters: [
+            {
+                index: 0,
+                originalName: "chapter-0.opus",
+                sha256: "b".repeat(64),
+                fileSize: 120,
+                path: "chapters/0.opus",
+                title: "Opening",
+                durationSeconds: 1.25,
+            },
+            {
+                index: 1,
+                originalName: "chapter-1.opus",
+                sha256: "c".repeat(64),
+                fileSize: 160,
+                path: "chapters/1.opus",
+                title: "Ending",
+                durationSeconds: 2.75,
+            },
+        ],
+    };
+    const module = compile(
+        "src/utils/audio/nativeCollection.ts",
+        {
+            "../../components/tonies/common/utils/imagePathUtils": pictures,
+        },
+        { fetch: async () => ({ ok: true, json: async () => manifest }) },
+    );
+    const collection = await module.loadNativeCollectionFromSource(
+        `lib://by/contentHash/${hash}/library-entry.json`,
+    );
+    const item = module.nativeCollectionToPlaybackItem(collection, "", {
+        title: "Unrelated model",
+        tracks: ["Wrong one", "Wrong two"],
+    });
+    assert.equal(item.title, "My audiobook");
+    assert.deepEqual(
+        Array.from(item.tracks, (track) => [track.title, track.durationSeconds]),
+        [
+            ["Opening", 1.25],
+            ["Ending", 2.75],
+        ],
+    );
+    assert.match(item.sources[1].url, /chapters\/1\.opus\?special=library$/);
+    delete manifest.chapters[1].title;
+    const partial = await module.loadNativeCollectionFromSource(
+        `lib://by/contentHash/${hash}/library-entry.json`,
+    );
+    assert.equal(partial.tracks, undefined, "Never partially map chapter titles");
+});
+
 test("player preserves Library metadata priority alongside native cache items", () => {
     const page = read("src/pages/tonies/TeddyAudioPlayerPage.tsx");
     assert.match(page, /\.\.\.standardItems, \.\.\.nativeItems, \.\.\.cachedNativeItems/);

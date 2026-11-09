@@ -22,6 +22,9 @@ export interface NativeCollectionSummary {
     totalSize: number;
     manifestPath: string;
     chapters: NativeCollectionChapter[];
+    title?: string;
+    tracks?: string[];
+    durations?: number[];
 }
 
 export interface NativeCollectionChapter {
@@ -30,6 +33,8 @@ export interface NativeCollectionChapter {
     sha256: string;
     fileSize: number;
     path: string;
+    title?: string;
+    durationSeconds?: number;
 }
 
 export interface TonieplayCollectionSummary {

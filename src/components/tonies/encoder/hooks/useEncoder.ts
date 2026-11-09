@@ -16,24 +16,46 @@ import {
 } from "../../../../utils/validation/fieldInputValidator";
 import { ffmpegSupportedExtensions } from "../../../../utils/files/ffmpegSupportedExtensions";
 import { createQueryString } from "../../../../utils/browser/queryParams";
+import { encodeBrowserAudio } from "../../../../utils/audio/wasmEncoder";
 import {
-    loadWasmEncoder,
-    isWasmEncoderAvailable,
-    WasmTafEncoder,
-} from "../../../../utils/audio/wasmEncoder";
+    encoderChapterTitle,
+    encoderUsesBrowser,
+    LEGACY_ENCODER_CAPABILITIES,
+    parseEncoderCapabilities,
+    type EncoderFormat,
+} from "../../../../utils/audio/encoderProtocol";
+import {
+    inspectEncoderInputs,
+    supportsBrowserEncoding,
+    type EncoderPreflight,
+} from "../../../../utils/audio/encoderPreflight";
 import { useDirectoryTree } from "../../common/hooks/useDirectoryTree";
 
 const api = new TeddyCloudApi(defaultAPIConfig());
+const apiBase = defaultAPIConfig().basePath;
+
+async function encoderRequest(path: string, init?: RequestInit) {
+    const response = await fetch(`${apiBase}${path}`, init);
+    if (!response.ok) throw new Error(`HTTP ${response.status}: ${await response.text()}`);
+    return response;
+}
 
 export const useEncoder = () => {
     const { t } = useTranslation();
     const { addNotification, addLoadingNotification, closeLoadingNotification } = useTeddyCloud();
 
     const [debugPCMObjects, setDebugPCMObjects] = useState(false);
-    const [useFrontendEncoding, setUseFrontendEncoding] = useState(false);
+    const [tafFrontendPreference, setUseFrontendEncoding] = useState(false);
     const [useFrontendEncodingSetting, setUseFrontendEncodingSetting] = useState(false);
-    const [wasmLoaded, setWasmLoaded] = useState(false);
     const [bitrate, setBitrate] = useState(96);
+    const [outputFormat, setOutputFormat] = useState<EncoderFormat>("taf");
+    const useFrontendEncoding = encoderUsesBrowser(outputFormat, tafFrontendPreference);
+    const [capabilities, setCapabilities] = useState(LEGACY_ENCODER_CAPABILITIES);
+    const [capabilitiesLoading, setCapabilitiesLoading] = useState(true);
+    const [preflight, setPreflight] = useState<EncoderPreflight>();
+    const [preflightLoading, setPreflightLoading] = useState(false);
+    const [nativeSource, setNativeSource] = useState("");
+    const encodingAbort = useRef<AbortController | null>(null);
 
     const [fileList, setFileList] = useState<MyUploadFile[]>([]);
     const [uploading, setUploading] = useState(false);
@@ -74,17 +96,6 @@ export const useEncoder = () => {
                 const useFrontend = data.toString() === "true";
                 setUseFrontendEncodingSetting(useFrontend);
                 setUseFrontendEncoding(useFrontend);
-
-                if (useFrontend) {
-                    loadWasmEncoder()
-                        .then(() => {
-                            setWasmLoaded(true);
-                            console.log("WASM encoder pre-loaded");
-                        })
-                        .catch((error) => {
-                            console.error("Failed to pre-load WASM encoder:", error);
-                        });
-                }
             } catch (error) {
                 console.error("Error fetching encode.use_frontend: ", error);
             }
@@ -105,8 +116,70 @@ export const useEncoder = () => {
         fetchDebugPCM();
         fetchUseFrontendSetting();
         fetchBitrateSetting();
+        const controller = new AbortController();
+        fetch(`${apiBase}/api/encoder/capabilities`, { signal: controller.signal })
+            .then(async (response) => {
+                if (response.status === 404) return LEGACY_ENCODER_CAPABILITIES;
+                if (!response.ok) throw new Error(`HTTP ${response.status}`);
+                return parseEncoderCapabilities(await response.json());
+            })
+            .then(setCapabilities)
+            .catch((error) => {
+                if (!controller.signal.aborted)
+                    console.error("Encoder capabilities unavailable", error);
+            })
+            .finally(() => {
+                if (!controller.signal.aborted) setCapabilitiesLoading(false);
+            });
+        return () => {
+            controller.abort();
+            encodingAbort.current?.abort();
+        };
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
+
+    useEffect(() => {
+        setPreflight(undefined);
+        if (!useFrontendEncoding || !fileList.length) {
+            setPreflightLoading(false);
+            return;
+        }
+        const controller = new AbortController();
+        setPreflightLoading(true);
+        const timer = window.setTimeout(() => {
+            void inspectEncoderInputs(
+                fileList.flatMap((file) => (file.file ? [file.file] : [])),
+                bitrate,
+                outputFormat,
+                controller.signal,
+            )
+                .then((result) => {
+                    if (!controller.signal.aborted) setPreflight(result);
+                })
+                .catch((error) => {
+                    if (!controller.signal.aborted)
+                        console.error("Encoder preflight failed", error);
+                })
+                .finally(() => {
+                    if (!controller.signal.aborted) setPreflightLoading(false);
+                });
+        }, 200);
+        return () => {
+            clearTimeout(timer);
+            controller.abort();
+        };
+    }, [fileList, bitrate, outputFormat, useFrontendEncoding]);
+
+    const maxFiles = useFrontendEncoding ? capabilities.formats[outputFormat].maxFiles : MAX_FILES;
+    const inputCountExceeded = maxFiles !== null && fileList.length > maxFiles;
+    const browserSupported = supportsBrowserEncoding();
+    const canEncode =
+        !inputCountExceeded &&
+        (!useFrontendEncoding ||
+            (browserSupported &&
+                !capabilitiesLoading &&
+                !preflightLoading &&
+                capabilities.formats[outputFormat].enabled));
 
     // Autofocus fürs eigene kleine Input-Feld, falls du es nutzen willst
     useEffect(() => {
@@ -144,16 +217,8 @@ export const useEncoder = () => {
     };
 
     const onChangeUpload: UploadProps["onChange"] = ({ fileList: newFileList }) => {
-        if (newFileList.length > MAX_FILES) {
-            addNotification(
-                NotificationTypeEnum.Error,
-                t("tonies.encoder.tooManyFilesError"),
-                t("tonies.encoder.maxFiles", { maxFiles: MAX_FILES }),
-                t("tonies.title"),
-            );
-        }
-
-        const updatedFileList = newFileList.slice(0, MAX_FILES) as MyUploadFile[];
+        // Preserve every selected file; unsupported counts disable start instead of discarding audio.
+        const updatedFileList = newFileList as MyUploadFile[];
 
         if (updatedFileList.length === 1 && tafFilename === "") {
             const singleFile = updatedFileList[0];
@@ -241,6 +306,7 @@ export const useEncoder = () => {
     // -------------------------------------------------
 
     const handleUpload = async () => {
+        if (fileList.length > MAX_FILES || !fileList.length) return;
         setUploading(true);
         const formData = new FormData();
         const key = "encoding-" + tafFilename + ".taf";
@@ -335,93 +401,148 @@ export const useEncoder = () => {
     // -------------------------------------------------
 
     const handleWasmUpload = async () => {
+        if (!canEncode || !fileList.length || encodingAbort.current) return;
+        const controller = new AbortController();
+        encodingAbort.current = controller;
         setUploading(true);
         setProcessing(true);
-        const key = "encoding-" + tafFilename + ".taf";
+        setNativeSource("");
+        const resultName = outputFormat === "taf" ? `${tafFilename}.taf` : tafFilename;
+        const key = "encoding-" + resultName;
+        let importId = "";
+        let published = false;
 
         try {
-            if (!isWasmEncoderAvailable()) {
-                addLoadingNotification(
-                    key,
-                    t("tonies.encoder.loading"),
-                    t("tonies.encoder.loadingWasmEncoder"),
-                );
-                await loadWasmEncoder();
-                setWasmLoaded(true);
+            const files = fileList.map((file) => {
+                if (!file.file) throw new Error(`Missing input: ${file.name}`);
+                return file.file;
+            });
+            if (outputFormat === "native") {
+                const metadata = JSON.stringify({
+                    title: tafFilename,
+                    chapters: files.map((file) => ({ title: encoderChapterTitle(file.name) })),
+                });
+                if (
+                    new TextEncoder().encode(metadata).length >
+                    capabilities.formats.native.maxMetadataBytes
+                )
+                    throw new Error(t("tonies.encoder.metadataTooLarge"));
+                const begin = await encoderRequest("/api/library/native/import", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: metadata,
+                    signal: controller.signal,
+                });
+                const data = await begin.json();
+                if (typeof data.id !== "string" || !/^[A-Za-z0-9_-]{1,128}$/.test(data.id))
+                    throw new Error("Invalid import ID");
+                importId = data.id;
             }
-
-            const currentUnixTime = Math.floor(Date.now() / 1000);
-            const audioId = currentUnixTime - 0x50000000;
-
-            addLoadingNotification(
-                key,
-                t("tonies.encoder.processing"),
-                t("tonies.encoder.browserEncodingInProgress"),
-            );
-
-            const tafBlob = await WasmTafEncoder.encodeMultipleFiles(
-                fileList,
-                audioId,
+            await encodeBrowserAudio(files, {
+                format: outputFormat,
+                audioId: Math.floor(Date.now() / 1000) - 0x50000000,
                 bitrate,
-                (current, total, currentFile) => {
+                signal: controller.signal,
+                maxBytes:
+                    outputFormat === "taf"
+                        ? capabilities.formats.taf.maxUploadBytes
+                        : capabilities.formats.native.maxChapterBytes,
+                onProgress: (current, total, currentFile) => {
+                    if (current >= total) return;
                     addLoadingNotification(
                         key,
                         t("tonies.encoder.processing"),
                         `${t("tonies.encoder.encoding")} ${current + 1}/${total}: ${currentFile}`,
                     );
                 },
-            );
-
-            setProcessing(false);
-            setUploading(true);
-
-            addLoadingNotification(
-                key,
-                t("tonies.encoder.uploading"),
-                t("tonies.encoder.uploadingDetails", { file: tafFilename + ".taf" }),
-            );
-
-            const queryParams = {
-                name: tafFilename + ".taf",
-                path: getPathFromNodeId(treeNodeId),
-                special: "library",
-            };
-            const queryString = createQueryString(queryParams);
-            const formData = new FormData();
-            formData.append("file", tafBlob, tafFilename + ".taf");
-
-            const response = await api.apiPostTeddyCloudFormDataRaw(
-                `/api/tafUpload?${queryString}`,
-                formData,
-            );
-            closeLoadingNotification(key);
-            if (response.ok) {
-                addNotification(
-                    NotificationTypeEnum.Success,
-                    t("tonies.encoder.uploadSuccessful"),
-                    t("tonies.encoder.uploadSuccessfulDetails", { file: tafFilename + ".taf" }),
-                    t("tonies.title"),
+                onFile: async (file, index) => {
+                    addLoadingNotification(
+                        key,
+                        t("tonies.encoder.uploading"),
+                        t("tonies.encoder.uploadingDetails", { file: file.name }),
+                    );
+                    if (outputFormat === "native") {
+                        await encoderRequest(
+                            `/api/library/native/import/${importId}/chapter/${index}`,
+                            {
+                                method: "POST",
+                                headers: { "Content-Type": "audio/ogg" },
+                                body: file,
+                                signal: controller.signal,
+                            },
+                        );
+                    } else {
+                        const queryString = createQueryString({
+                            name: resultName,
+                            path: getPathFromNodeId(treeNodeId),
+                            special: "library",
+                        });
+                        const body = new FormData();
+                        body.append("file", file, resultName);
+                        await encoderRequest(`/api/tafUpload?${queryString}`, {
+                            method: "POST",
+                            body,
+                            signal: controller.signal,
+                        });
+                    }
+                },
+            });
+            if (outputFormat === "native") {
+                const response = await encoderRequest(
+                    `/api/library/native/import/${importId}/finish`,
+                    { method: "POST", signal: controller.signal },
                 );
-                setFileList([]);
-                setTafFilename("");
-            } else {
-                addNotification(
-                    NotificationTypeEnum.Error,
-                    t("tonies.encoder.uploadFailed"),
-                    t("tonies.encoder.uploadFailedDetails") + response.statusText,
-                    t("tonies.title"),
-                );
+                const result = await response.json();
+                if (typeof result.source !== "string") throw new Error("Missing collection source");
+                setNativeSource(result.source);
             }
-        } catch (err) {
-            closeLoadingNotification(key);
+            published = true;
             addNotification(
-                NotificationTypeEnum.Error,
-                t("tonies.encoder.uploadFailed"),
-                t("tonies.encoder.uploadFailedDetails") + err,
+                NotificationTypeEnum.Success,
+                t("tonies.encoder.uploadSuccessful"),
+                t("tonies.encoder.uploadSuccessfulDetails", { file: resultName }),
                 t("tonies.title"),
             );
-            throw err;
+            setFileList([]);
+            setTafFilename("");
+        } catch (err) {
+            const detail = err instanceof Error ? err.message : String(err);
+            const errorKey = /encoder_error_1|encoder_memory_failed/.test(detail)
+                ? "memoryError"
+                : /encoder_error_2|storage_write_failed|QuotaExceededError/.test(detail)
+                  ? "storageError"
+                  : /encoder_error_3/.test(detail)
+                    ? "headerError"
+                    : /encoder_error_6|output_limit/.test(detail)
+                      ? "outputLimitWarning"
+                      : /encoder_version_mismatch/.test(detail)
+                        ? "encoderVersionError"
+                        : undefined;
+            addNotification(
+                NotificationTypeEnum.Error,
+                controller.signal.aborted
+                    ? t("tonies.encoder.cancelled")
+                    : t("tonies.encoder.uploadFailed"),
+                controller.signal.aborted
+                    ? t("tonies.encoder.cancelledDetails")
+                    : errorKey
+                      ? t(`tonies.encoder.${errorKey}`)
+                      : t("tonies.encoder.uploadFailedDetails") + detail,
+                t("tonies.title"),
+            );
         } finally {
+            if (importId && !published) {
+                try {
+                    await encoderRequest(`/api/library/native/import/${importId}`, {
+                        method: "DELETE",
+                        signal: AbortSignal.timeout(10000),
+                    });
+                } catch (error) {
+                    console.error("Could not remove incomplete native import", error);
+                }
+            }
+            closeLoadingNotification(key);
+            encodingAbort.current = null;
             setProcessing(false);
             setUploading(false);
         }
@@ -436,12 +557,23 @@ export const useEncoder = () => {
         hasInvalidChars,
         useFrontendEncoding,
         useFrontendEncodingSetting,
+        outputFormat,
+        capabilities,
+        maxFiles,
+        inputCountExceeded,
+        browserSupported,
+        preflight,
+        preflightLoading,
+        canEncode,
+        nativeSource,
         isCreateDirectoryModalOpen,
         createDirectoryPath,
         inputRef,
 
         // Actions
         setUseFrontendEncoding,
+        setOutputFormat,
+        cancelEncoding: () => encodingAbort.current?.abort(),
         sortFileListAlphabeticallyLiteral,
         sortFileListAlphabeticallyNatural,
         clearFileList,

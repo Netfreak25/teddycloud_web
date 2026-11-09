@@ -1,10 +1,25 @@
 import React from "react";
-import { Button, Divider, Dropdown, Input, Space, Switch, Tooltip, Upload, theme } from "antd";
+import {
+    Alert,
+    Button,
+    Divider,
+    Dropdown,
+    Input,
+    Select,
+    Space,
+    Switch,
+    Tooltip,
+    Typography,
+    Upload,
+    theme,
+} from "antd";
 import { useTranslation } from "react-i18next";
 import { SortableContext, verticalListSortingStrategy } from "@dnd-kit/sortable";
 import { EllipsisOutlined, FolderAddOutlined, InboxOutlined } from "@ant-design/icons";
 import { DndContext } from "@dnd-kit/core";
-import { MAX_FILES } from "../../../constants/numbers";
+import { humanFileSize } from "../../../utils/files/humanFileSize";
+import { LARGE_DECODE_BYTES } from "../../../utils/audio/encoderPreflight";
+import { estimateTafHeaderMaximum } from "../../../utils/audio/encoderProtocol";
 import { MyUploadFile } from "../../../utils/audio/audioEncoder";
 import { DraggableUploadListItem } from "../common/elements/DraggableUploadListItem";
 import { useEncoder } from "./hooks/useEncoder";
@@ -27,9 +42,20 @@ export const Encoder: React.FC = () => {
         hasInvalidChars,
         useFrontendEncoding,
         useFrontendEncodingSetting,
+        outputFormat,
+        capabilities,
+        maxFiles,
+        inputCountExceeded,
+        browserSupported,
+        preflight,
+        preflightLoading,
+        canEncode,
+        nativeSource,
 
         // Actions
         setUseFrontendEncoding,
+        setOutputFormat,
+        cancelEncoding,
         sortFileListAlphabeticallyLiteral,
         sortFileListAlphabeticallyNatural,
         clearFileList,
@@ -88,6 +114,49 @@ export const Encoder: React.FC = () => {
     return (
         <>
             <Space orientation="vertical" style={{ display: "flex" }}>
+                <Space wrap>
+                    <Switch
+                        checkedChildren={t("tonies.encoder.browserSideEncoding")}
+                        unCheckedChildren={t("tonies.encoder.serverSideEncoding")}
+                        defaultChecked={useFrontendEncodingSetting}
+                        checked={useFrontendEncoding}
+                        onChange={setUseFrontendEncoding}
+                        disabled={uploading || processing || outputFormat === "native"}
+                    />
+                    <Select
+                        aria-label={t("tonies.encoder.outputFormat")}
+                        value={outputFormat}
+                        onChange={setOutputFormat}
+                        disabled={uploading || processing}
+                        style={{ minWidth: 230 }}
+                        options={[
+                            { value: "taf", label: t("tonies.encoder.tafFormat") },
+                            {
+                                value: "native",
+                                label: t("tonies.encoder.nativeFormat"),
+                                disabled: !capabilities.formats.native.enabled,
+                            },
+                        ]}
+                    />
+                </Space>
+                {useFrontendEncoding && !browserSupported && (
+                    <Alert type="error" showIcon title={t("tonies.encoder.browserUnavailable")} />
+                )}
+                {outputFormat === "native" && (
+                    <Alert
+                        type="info"
+                        showIcon
+                        title={t("tonies.encoder.nativeDestination")}
+                        description={t("tonies.encoder.nativeBrowserRequired")}
+                    />
+                )}
+                {nativeSource && (
+                    <Alert
+                        type="success"
+                        title={t("tonies.encoder.nativeCreated")}
+                        description={<Typography.Text copyable>{nativeSource}</Typography.Text>}
+                    />
+                )}
                 <DndContext sensors={[sensor]} onDragEnd={onDragEnd}>
                     <SortableContext
                         items={fileList.map((i) => i.uid)}
@@ -110,11 +179,7 @@ export const Encoder: React.FC = () => {
                             <p className="ant-upload-drag-icon">
                                 <InboxOutlined />
                             </p>
-                            <p className="ant-upload-text">
-                                {t("tonies.encoder.uploadText", {
-                                    maxFiles: MAX_FILES,
-                                })}
-                            </p>
+                            <p className="ant-upload-text">{t("tonies.encoder.uploadAudioText")}</p>
                             <p className="ant-upload-hint">{t("tonies.encoder.uploadHint")}</p>
                         </Upload.Dragger>
                     </SortableContext>
@@ -122,6 +187,77 @@ export const Encoder: React.FC = () => {
 
                 {fileList.length > 0 ? (
                     <>
+                        {inputCountExceeded && (
+                            <Alert
+                                type="error"
+                                showIcon
+                                title={t("tonies.encoder.maxFiles", { maxFiles })}
+                            />
+                        )}
+                        {useFrontendEncoding && outputFormat === "taf" && fileList.length > 99 && (
+                            <Alert
+                                type="warning"
+                                showIcon
+                                title={t("tonies.encoder.extendedTafWarning")}
+                            />
+                        )}
+                        {useFrontendEncoding && preflightLoading && (
+                            <Alert type="info" title={t("tonies.encoder.preflightRunning")} />
+                        )}
+                        {useFrontendEncoding && preflight && (
+                            <Alert
+                                type={
+                                    preflight.storageWarning ||
+                                    preflight.resources.decodedBytes >= LARGE_DECODE_BYTES
+                                        ? "warning"
+                                        : "info"
+                                }
+                                showIcon
+                                title={t("tonies.encoder.preflightTitle")}
+                                description={
+                                    <>
+                                        <div>
+                                            {t("tonies.encoder.preflightEstimate", {
+                                                minutes: Math.ceil(
+                                                    preflight.resources.totalSeconds / 60,
+                                                ),
+                                                output: humanFileSize(
+                                                    preflight.resources.totalBytes,
+                                                ),
+                                                memory: humanFileSize(
+                                                    preflight.resources.decodedBytes,
+                                                ),
+                                            })}
+                                        </div>
+                                        {!preflight.resources.complete && (
+                                            <div>
+                                                {t("tonies.encoder.preflightUnknown", {
+                                                    count: preflight.resources.unknownFiles,
+                                                })}
+                                            </div>
+                                        )}
+                                        {outputFormat === "taf" &&
+                                            estimateTafHeaderMaximum(fileList.length) >
+                                                (capabilities.formats.taf.headerBytes || 4092) && (
+                                                <div>{t("tonies.encoder.headerWarning")}</div>
+                                            )}
+                                        {preflight.resources.diskBytes >=
+                                            (outputFormat === "taf"
+                                                ? capabilities.formats.taf.maxUploadBytes
+                                                : capabilities.formats.native.maxChapterBytes) && (
+                                            <div>{t("tonies.encoder.outputLimitWarning")}</div>
+                                        )}
+                                        {preflight.storageWarning && (
+                                            <div>{t("tonies.encoder.storageWarning")}</div>
+                                        )}
+                                        {preflight.resources.decodedBytes >= LARGE_DECODE_BYTES && (
+                                            <div>{t("tonies.encoder.decodeWarning")}</div>
+                                        )}
+                                        <div>{t("tonies.encoder.preflightDisclaimer")}</div>
+                                    </>
+                                }
+                            />
+                        )}
                         <Space
                             orientation="horizontal"
                             style={{
@@ -188,7 +324,9 @@ export const Encoder: React.FC = () => {
                                     <DirectoryTreeSelect
                                         className="encoder-save-dir"
                                         directoryTree={directoryTree}
-                                        disabled={processing || uploading}
+                                        disabled={
+                                            processing || uploading || outputFormat === "native"
+                                        }
                                         placeholder={t(
                                             "fileBrowser.moveFile.destinationPlaceholder",
                                         )}
@@ -200,7 +338,9 @@ export const Encoder: React.FC = () => {
                                     >
                                         <Button
                                             className="encoder-save-btn"
-                                            disabled={uploading || processing}
+                                            disabled={
+                                                uploading || processing || outputFormat === "native"
+                                            }
                                             icon={<FolderAddOutlined />}
                                             onClick={() => {
                                                 const basePath = directoryTree.getPathFromNodeId(
@@ -214,7 +354,7 @@ export const Encoder: React.FC = () => {
 
                                     <Input
                                         className="encoder-save-name"
-                                        suffix=".taf"
+                                        suffix={outputFormat === "taf" ? ".taf" : undefined}
                                         required
                                         value={tafFilename}
                                         style={{ maxWidth: 300 }}
@@ -245,14 +385,11 @@ export const Encoder: React.FC = () => {
                                         gap: 16,
                                     }}
                                 >
-                                    <Switch
-                                        checkedChildren={t("tonies.encoder.browserSideEncoding")}
-                                        unCheckedChildren={t("tonies.encoder.serverSideEncoding")}
-                                        defaultChecked={useFrontendEncodingSetting}
-                                        checked={useFrontendEncoding}
-                                        onChange={setUseFrontendEncoding}
-                                        disabled={uploading || processing}
-                                    />
+                                    {useFrontendEncoding && (uploading || processing) && (
+                                        <Button onClick={cancelEncoding}>
+                                            {t("tonies.encoder.cancel")}
+                                        </Button>
+                                    )}
                                     <Button
                                         type="primary"
                                         onClick={
@@ -261,7 +398,8 @@ export const Encoder: React.FC = () => {
                                         disabled={
                                             fileList.length === 0 ||
                                             tafFilename === "" ||
-                                            hasInvalidChars
+                                            hasInvalidChars ||
+                                            !canEncode
                                         }
                                         loading={uploading || processing}
                                     >

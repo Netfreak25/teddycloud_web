@@ -12,6 +12,7 @@ export interface AudioPlaybackTrack {
     title: string;
     sourceIndex: number;
     startSeconds: number;
+    durationSeconds?: number;
 }
 
 export interface AudioPlaybackItem {

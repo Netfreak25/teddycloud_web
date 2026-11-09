@@ -272,6 +272,9 @@ export const createColumns = (options: CreateColumnsOptions): any[] => {
                 ) : record?.nativeCollection ? (
                     mode === "full" ? (
                         <span title={record.nativeCollection.contentHash}>
+                            {record.nativeCollection.title && (
+                                <div>{record.nativeCollection.title}</div>
+                            )}
                             <span className="showSmallDevicesOnly">
                                 {record.nativeCollection.contentHash.slice(0, 12)}…
                             </span>
@@ -496,6 +499,10 @@ export const createColumns = (options: CreateColumnsOptions): any[] => {
                 return (
                     record.name === ".." ||
                     record.name.toLowerCase().includes(text) ||
+                    record.nativeCollection?.title?.toLowerCase().includes(text) ||
+                    record.nativeCollection?.tracks?.some((title) =>
+                        title.toLowerCase().includes(text),
+                    ) ||
                     record.nativeCollection?.chapters.some((chapter) =>
                         chapter.originalName.toLowerCase().includes(text),
                     ) ||

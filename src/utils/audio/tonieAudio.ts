@@ -5,6 +5,7 @@ import {
     isNativeCollectionSource,
     loadNativeCollectionFromSource,
     NativeAudio,
+    NativeAudioMetadata,
     nativeAudioToPlaybackItem,
 } from "./nativeCollection";
 
@@ -30,8 +31,14 @@ export const loadTonieNativePlaybackItem = async (
     if (!usesNativeTonieAudio(tonie)) throw new Error("No native audio selected");
     const source = tonie.source?.trim() || tonie.cacheState?.v3Source;
     let audio: NativeAudio;
+    let collectionMetadata: NativeAudioMetadata = {};
     if (source) {
         const collection = await loadNativeCollectionFromSource(source, overlay);
+        collectionMetadata = {
+            title: collection.title,
+            tracks: collection.tracks,
+            durations: collection.durations,
+        };
         audio = {
             id: collection.contentHash,
             chapters: collection.chapters.map((chapter) => ({
@@ -73,17 +80,27 @@ export const loadTonieNativePlaybackItem = async (
             ),
         };
     }
-    const tracks = [tonie.playlist?.tracks, tonie.sourceInfo?.tracks, tonie.tonieInfo.tracks].find(
+    const tracks = [
+        collectionMetadata.tracks,
+        tonie.playlist?.tracks,
+        tonie.sourceInfo?.tracks,
+        tonie.tonieInfo.tracks,
+    ].find(
         (titles) =>
             titles?.length === audio.chapters.length && titles.every((title) => title.trim()),
     );
     return nativeAudioToPlaybackItem(audio, {
-        title: tonie.playlist?.title || tonie.sourceInfo?.series || tonie.tonieInfo.series,
+        title:
+            collectionMetadata.title ||
+            tonie.playlist?.title ||
+            tonie.sourceInfo?.series ||
+            tonie.tonieInfo.series,
         subtitle: tonie.sourceInfo?.episode || tonie.tonieInfo.episode,
         picture:
             tonie.sourceInfo?.picture ||
             resolveTonieDisplayPicture(tonie.customImage, tonie.tonieInfo.picture),
         tracks,
+        durations: collectionMetadata.durations,
         fallbackTrackTitle,
     });
 };

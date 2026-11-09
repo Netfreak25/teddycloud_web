@@ -36,6 +36,7 @@ export const loadNativeCollectionFromSource = async (
         format?: unknown;
         contentHash?: unknown;
         chapters?: unknown;
+        title?: unknown;
     };
     if (
         manifest.format !== "ogg-opus" ||
@@ -54,6 +55,8 @@ export const loadNativeCollectionFromSource = async (
             sha256?: unknown;
             fileSize?: unknown;
             path?: unknown;
+            title?: unknown;
+            durationSeconds?: unknown;
         };
         if (
             chapter.index !== expectedIndex ||
@@ -74,6 +77,16 @@ export const loadNativeCollectionFromSource = async (
             sha256: chapter.sha256,
             fileSize: chapter.fileSize,
             path: `${collectionRoot}/${chapter.path}`,
+            title:
+                typeof chapter.title === "string" && chapter.title.trim()
+                    ? chapter.title.trim()
+                    : undefined,
+            durationSeconds:
+                typeof chapter.durationSeconds === "number" &&
+                Number.isFinite(chapter.durationSeconds) &&
+                chapter.durationSeconds >= 0
+                    ? chapter.durationSeconds
+                    : undefined,
         };
     });
 
@@ -85,6 +98,13 @@ export const loadNativeCollectionFromSource = async (
         totalSize: chapters.reduce((sum, chapter) => sum + chapter.fileSize, 0),
         manifestPath,
         chapters,
+        title: typeof manifest.title === "string" ? manifest.title.trim() || undefined : undefined,
+        tracks: chapters.every((chapter) => chapter.title)
+            ? chapters.map((chapter) => chapter.title!)
+            : undefined,
+        durations: chapters.every((chapter) => chapter.durationSeconds !== undefined)
+            ? chapters.map((chapter) => chapter.durationSeconds!)
+            : undefined,
     };
 };
 
@@ -103,7 +123,19 @@ export const nativeCollectionToPlaybackItem = (
                 size: chapter.fileSize,
             })),
         },
-        metadata,
+        {
+            ...metadata,
+            title: collection.title || metadata?.title,
+            tracks:
+                collection.tracks?.length === collection.chapterCount &&
+                collection.tracks.every((title) => title.trim())
+                    ? collection.tracks
+                    : metadata?.tracks,
+            durations:
+                collection.durations?.length === collection.chapterCount
+                    ? collection.durations
+                    : metadata?.durations,
+        },
     );
 
 export type NativeAudioMetadata = {
@@ -111,6 +143,7 @@ export type NativeAudioMetadata = {
     subtitle?: string;
     picture?: string;
     tracks?: string[];
+    durations?: number[];
     fallbackTrackTitle?: (number: number) => string;
 };
 
@@ -151,6 +184,12 @@ export const nativeAudioToPlaybackItem = (
             title,
             sourceIndex: index,
             startSeconds: 0,
+            durationSeconds:
+                metadata?.durations?.length === audio.chapters.length &&
+                Number.isFinite(metadata.durations[index]) &&
+                metadata.durations[index] >= 0
+                    ? metadata.durations[index]
+                    : undefined,
         })),
         searchText: [
             audio.id,
