@@ -75,7 +75,7 @@ const TonieInformationModal: React.FC<InformationModalProps> = ({
     );
     const modelPicture = resolveTonieDisplayPicture(
         "customImage" in tonieCardOrTAFRecord ? tonieCardOrTAFRecord.customImage : undefined,
-        tonieCardOrTAFRecord.tonieInfo.picture,
+        tonieCardOrTAFRecord.tonieInfo?.picture,
     );
 
     useEffect(() => {
@@ -171,7 +171,7 @@ const TonieInformationModal: React.FC<InformationModalProps> = ({
             : null;
 
     const tonieInfoString =
-        tonieCardOrTAFRecord.tonieInfo?.series +
+        (tonieCardOrTAFRecord.tonieInfo?.series || "") +
         (tonieCardOrTAFRecord?.tonieInfo?.episode
             ? " - " + tonieCardOrTAFRecord.tonieInfo?.episode
             : "") +
@@ -180,7 +180,7 @@ const TonieInformationModal: React.FC<InformationModalProps> = ({
             : "");
 
     const modelTitle =
-        `${tonieCardOrTAFRecord.tonieInfo?.series}` +
+        (tonieCardOrTAFRecord.tonieInfo?.series || "") +
         (tonieCardOrTAFRecord.tonieInfo?.episode
             ? ` - ${tonieCardOrTAFRecord.tonieInfo?.episode}`
             : "");
@@ -193,7 +193,9 @@ const TonieInformationModal: React.FC<InformationModalProps> = ({
                   : "")
             : "";
 
-    const title = informationFromSource ? sourceTitle : modelTitle;
+    const title =
+        (informationFromSource ? sourceTitle : modelTitle) ||
+        ("name" in tonieCardOrTAFRecord ? tonieCardOrTAFRecord.name : "");
 
     const trackSecondsMatchSourceTracks = (
         tonieCardOrTAFRecord: TonieCardTAFRecord,
@@ -281,8 +283,7 @@ const TonieInformationModal: React.FC<InformationModalProps> = ({
             <h3>
                 {title
                     ? title
-                    : "model" in tonieCardOrTAFRecord.tonieInfo &&
-                        tonieCardOrTAFRecord.tonieInfo.model
+                    : tonieCardOrTAFRecord.tonieInfo?.model
                       ? t("tonies.unsetTonie") + " " + tonieCardOrTAFRecord.tonieInfo.model
                       : t("tonies.informationModal.unknownModel")}
                 <br />
