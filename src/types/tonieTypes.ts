@@ -26,6 +26,20 @@ export type ContentCacheDownload = {
     reason?: string;
 };
 
+export type V3RefreshTarget = {
+    overlay: string;
+    boxName: string;
+    accepted: boolean;
+    state: ContentCacheDownload["state"] | "rejected";
+    reason?: string;
+};
+
+export type V3RefreshResult = {
+    ok: boolean;
+    targets: V3RefreshTarget[];
+    error?: string;
+};
+
 export type TonieCardProps = {
     uid: string;
     ruid: string;

@@ -1,8 +1,8 @@
 import { defaultAPIConfig } from "../../../../config/defaultApiConfig";
 import { TeddyCloudApi } from "../../../../api";
 import { NotificationTypeEnum } from "../../../../types/teddyCloudNotificationTypes";
-import { TonieCardProps } from "../../../../types/tonieTypes";
-import { cacheDownloadReason } from "../../common/utils/cacheDownloadUtils";
+import { TonieCardProps, V3RefreshTarget } from "../../../../types/tonieTypes";
+import { cacheDownloadReason, isV3RefreshPending } from "../../common/utils/cacheDownloadUtils";
 
 const api = new TeddyCloudApi(defaultAPIConfig());
 
@@ -20,6 +20,8 @@ type UseTonieCardActionsParams = {
     addLoadingNotification: (key: string, title: string, description?: string) => void;
     closeLoadingNotification: (key: string) => void;
     fetchUpdatedTonieCard: () => Promise<void>;
+    editorOpen: boolean;
+    refreshDisabled: boolean;
 };
 
 export const useTonieCardActions = ({
@@ -31,8 +33,16 @@ export const useTonieCardActions = ({
     addLoadingNotification,
     closeLoadingNotification,
     fetchUpdatedTonieCard,
+    editorOpen,
+    refreshDisabled,
 }: UseTonieCardActionsParams) => {
     const [submitted, setSubmitted] = useState(false);
+    const [refreshTargets, setRefreshTargets] = useState<V3RefreshTarget[]>([]);
+    const [refreshSubmitting, setRefreshSubmitting] = useState(false);
+    const [refreshError, setRefreshError] = useState("");
+    const refreshRequest = useRef(false);
+    const refreshGeneration = useRef(0);
+    const refreshPending = refreshSubmitting || refreshTargets.some(isV3RefreshPending);
     const statuses = Object.values(tonieCard.cacheState?.download || {});
     const active = statuses.some(({ state }) => state === "queued" || state === "running");
     const downloadPending = submitted || active;
@@ -42,7 +52,7 @@ export const useTonieCardActions = ({
         if (statuses.length && !active) setSubmitted(false);
     }, [tonieCard.cacheState?.download, active]);
     useEffect(() => {
-        if (!downloadPending) return;
+        if (!downloadPending || refreshPending) return;
         let refreshing = false;
         const timer = window.setInterval(async () => {
             if (refreshing) return;
@@ -54,7 +64,84 @@ export const useTonieCardActions = ({
             }
         }, 1500);
         return () => window.clearInterval(timer);
-    }, [downloadPending]);
+    }, [downloadPending, refreshPending]);
+    useEffect(() => {
+        refreshGeneration.current++;
+        refreshRequest.current = false;
+        setRefreshTargets([]);
+        setRefreshSubmitting(false);
+        setRefreshError("");
+        return () => {
+            refreshGeneration.current++;
+        };
+    }, [tonieCard.ruid, overlay]);
+    useEffect(() => {
+        const pending = refreshTargets.filter(isV3RefreshPending);
+        if (!editorOpen || !pending.length) return;
+        let cancelled = false;
+        let refreshing = false;
+        const timer = window.setInterval(async () => {
+            if (refreshing) return;
+            refreshing = true;
+            try {
+                const updates = await Promise.all(
+                    pending.map(async (target) => ({
+                        overlay: target.overlay,
+                        status: (await api.apiGetTagInfo(tonieCard.ruid, target.overlay)).cacheState
+                            ?.download?.v3,
+                    })),
+                );
+                if (cancelled) return;
+                setRefreshError("");
+                const next = refreshTargets.map((target) => {
+                    if (!isV3RefreshPending(target)) return target;
+                    const status = updates.find(
+                        (update) => update.overlay === target.overlay,
+                    )?.status;
+                    return status
+                        ? { ...target, ...status }
+                        : {
+                              ...target,
+                              state: "failed" as const,
+                              reason: "refresh_status_unavailable",
+                          };
+                });
+                setRefreshTargets(next);
+                if (!next.some(isV3RefreshPending)) await refreshRef.current();
+            } catch (error) {
+                if (!cancelled) setRefreshError(String(error));
+            } finally {
+                refreshing = false;
+            }
+        }, 1500);
+        return () => {
+            cancelled = true;
+            window.clearInterval(timer);
+        };
+    }, [editorOpen, refreshTargets, tonieCard.ruid, overlay]);
+
+    const handleV3Refresh = async () => {
+        if (refreshDisabled || downloadPending || refreshPending || refreshRequest.current) return;
+        const generation = refreshGeneration.current;
+        refreshRequest.current = true;
+        setRefreshSubmitting(true);
+        setRefreshError("");
+        try {
+            const result = await api.apiRefreshV3Content(tonieCard.ruid, overlay);
+            if (generation !== refreshGeneration.current) return;
+            setRefreshTargets(result.targets);
+            if (!result.targets.length) {
+                setRefreshError(cacheDownloadReason(result.error || "cache_request_rejected", t));
+            }
+        } catch (error) {
+            if (generation === refreshGeneration.current) setRefreshError(String(error));
+        } finally {
+            if (generation === refreshGeneration.current) {
+                refreshRequest.current = false;
+                setRefreshSubmitting(false);
+            }
+        }
+    };
     const notifySuccess = (message: string, description: string) => {
         addNotification(NotificationTypeEnum.Success, message, description, t("tonies.title"));
     };
@@ -145,7 +232,8 @@ export const useTonieCardActions = ({
     };
 
     const handleBackgroundDownload = async () => {
-        if (!tonieCard.downloadTriggerUrl || downloadPending) return;
+        if (!tonieCard.downloadTriggerUrl || downloadPending || refreshPending) return;
+        setRefreshTargets([]);
 
         const key = "loading" + tonieCard.ruid;
         setSubmitted(true);
@@ -226,6 +314,10 @@ export const useTonieCardActions = ({
         handleNoCloudClick,
         handleBackgroundDownload,
         downloadPending,
+        handleV3Refresh,
+        refreshTargets,
+        refreshPending,
+        refreshError,
     };
 };
 import { useEffect, useRef, useState } from "react";

@@ -21,6 +21,7 @@ import {
     InfoCircleOutlined,
     InboxOutlined,
     PlusOutlined,
+    ReloadOutlined,
     RollbackOutlined,
     SaveFilled,
     SwapOutlined,
@@ -29,6 +30,8 @@ import {
 import { ToniesJsonSearch } from "../../common/searches/ToniesJsonSearch";
 import { RadioStreamSearch } from "../search/RadioStreamSearch";
 import { toModelKey } from "../../utils/modelKey";
+import type { V3RefreshTarget } from "../../../../types/tonieTypes";
+import { cacheDownloadReason } from "../../common/utils/cacheDownloadUtils";
 
 const { useToken } = theme;
 const { Text } = Typography;
@@ -86,6 +89,13 @@ interface EditTonieModalProps {
     originalV3Source?: string;
     preferredOriginalKind?: "taf" | "v3";
     onRestoreOriginalSource: (value: string) => void;
+    v3Refresh?: {
+        onRefresh: () => void;
+        pending: boolean;
+        disabledReason?: string;
+        targets: V3RefreshTarget[];
+        error?: string;
+    };
 
     // Set audio from model (when source differs from model and model audio exists in library)
     modelAudioPath?: string | null;
@@ -146,6 +156,7 @@ export const EditTonieModal: React.FC<EditTonieModalProps> = ({
     originalV3Source,
     preferredOriginalKind,
     onRestoreOriginalSource,
+    v3Refresh,
     modelAudioPath,
     modelAudioHasMapping = false,
     modelDisplayText = "",
@@ -405,6 +416,46 @@ export const EditTonieModal: React.FC<EditTonieModalProps> = ({
                                 ]}
                             />
                         </Form.Item>
+                        {v3Refresh && (
+                            <div aria-live="polite">
+                                <Tooltip title={v3Refresh.disabledReason}>
+                                    <Button
+                                        icon={<ReloadOutlined />}
+                                        onClick={v3Refresh.onRefresh}
+                                        loading={v3Refresh.pending}
+                                        disabled={
+                                            Boolean(v3Refresh.disabledReason) || v3Refresh.pending
+                                        }
+                                    >
+                                        {t("tonies.cacheDownload.refreshV3")}
+                                    </Button>
+                                </Tooltip>
+                                <div style={{ marginTop: 8 }}>
+                                    <Text type="secondary">
+                                        {v3Refresh.disabledReason ||
+                                            t("tonies.cacheDownload.refreshGroupHint")}
+                                    </Text>
+                                </div>
+                                {v3Refresh.targets.map((target) => (
+                                    <div key={target.overlay}>
+                                        <Text
+                                            type={
+                                                target.state === "failed" || !target.accepted
+                                                    ? "danger"
+                                                    : undefined
+                                            }
+                                        >
+                                            {target.boxName || target.overlay}:{" "}
+                                            {t(`tonies.cacheDownload.${target.state}`)}
+                                            {target.reason
+                                                ? ` — ${cacheDownloadReason(target.reason, t)}`
+                                                : ""}
+                                        </Text>
+                                    </div>
+                                ))}
+                                {v3Refresh.error && <Text type="danger">{v3Refresh.error}</Text>}
+                            </div>
+                        )}
                     </div>
                 </>
             )}

@@ -205,6 +205,9 @@ export const TonieCard: React.FC<{
             ((tonieCard.cachePreference || "auto") as "auto" | "taf" | "v3");
 
     const shouldShowCachePreference = (selectedSource || "").trim().length === 0;
+    const refreshNeedsSave =
+        selectedSource !== (tonieCard.source || "") ||
+        selectedCachePreference !== (tonieCard.cachePreference || "auto");
 
     // ------------------------
     // API helper
@@ -243,17 +246,27 @@ export const TonieCard: React.FC<{
         overlay,
     });
 
-    const { handleLiveClick, handleNoCloudClick, handleBackgroundDownload, downloadPending } =
-        useTonieCardActions({
-            tonieCard,
-            overlay,
-            modelTitle,
-            t,
-            addNotification,
-            addLoadingNotification,
-            closeLoadingNotification,
-            fetchUpdatedTonieCard,
-        });
+    const {
+        handleLiveClick,
+        handleNoCloudClick,
+        handleBackgroundDownload,
+        downloadPending,
+        handleV3Refresh,
+        refreshTargets,
+        refreshPending,
+        refreshError,
+    } = useTonieCardActions({
+        tonieCard,
+        overlay,
+        modelTitle,
+        t,
+        addNotification,
+        addLoadingNotification,
+        closeLoadingNotification,
+        fetchUpdatedTonieCard,
+        editorOpen: isEditModalOpen,
+        refreshDisabled: readOnly || refreshNeedsSave,
+    });
 
     // ------------------------
     // Handlers – playback
@@ -765,6 +778,21 @@ export const TonieCard: React.FC<{
                 onSelectedCachePreferenceChange={setSelectedCachePreference}
                 originalV3Source={tonieCard.cacheState?.v3Source}
                 preferredOriginalKind={tonieCard.cacheState?.preferredOriginalKind}
+                v3Refresh={
+                    readOnly || tonieCard.ruid.startsWith("0000000")
+                        ? undefined
+                        : {
+                              onRefresh: handleV3Refresh,
+                              pending: refreshPending,
+                              disabledReason: refreshNeedsSave
+                                  ? t("tonies.cacheDownload.refreshSaveFirst")
+                                  : downloadPending
+                                    ? t("tonies.cacheDownload.refreshBusy")
+                                    : undefined,
+                              targets: refreshTargets,
+                              error: refreshError,
+                          }
+                }
                 onRestoreOriginalSource={(value) => {
                     setSelectedSource(value);
                     setTempSelectedSource(value);

@@ -21,6 +21,7 @@ import {
     TagTonieCard,
     TagTonieCardsList,
     TonieCardProps,
+    V3RefreshResult,
 } from "../../types/tonieTypes";
 import {
     TonieboxCardsList,
@@ -739,6 +740,32 @@ export class TeddyCloudApi extends runtime.BaseAPI {
 
     async apiRemoveTonieImage(ruid: string): Promise<Response> {
         return this.apiPostTeddyCloudRaw(`/api/tonie/image/remove/${encodeURIComponent(ruid)}`, "");
+    }
+
+    /** Refresh original V3 content for the server-selected TB2 content group. */
+    async apiRefreshV3Content(ruid: string, overlay: string): Promise<V3RefreshResult> {
+        let response: Response;
+        try {
+            response = await this.request({
+                path: `/api/content/cache/${encodeURIComponent(ruid)}`,
+                method: "POST",
+                headers: {},
+                query: { refresh: "v3", ...(overlay ? { overlay } : {}) },
+            });
+        } catch (error) {
+            if (!(error instanceof runtime.ResponseError)) throw error;
+            response = error.response;
+        }
+        const result = (await response.json().catch(() => {
+            throw new Error(`Invalid V3 refresh response (HTTP ${response.status})`);
+        })) as V3RefreshResult | null;
+        if (!result || typeof result.ok !== "boolean" || !Array.isArray(result.targets)) {
+            throw new Error(
+                result?.error || `Invalid V3 refresh response (HTTP ${response.status})`,
+            );
+        }
+        // A rejected group still contains useful, individual refusal reasons.
+        return result;
     }
 
     /**
