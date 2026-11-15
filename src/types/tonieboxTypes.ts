@@ -23,6 +23,7 @@ export type TonieboxPlaybackRuntime = {
     tonie: string | null;
     ruid: string | null;
     contentVersion: number | null;
+    metadataRevision?: string;
     chapter: number | null;
     chapterUntilMs: number | null;
     chapterDuration: string | null;

@@ -6,6 +6,7 @@ import test from "node:test";
 
 const require = createRequire(import.meta.url);
 const ts = require("typescript");
+let playlistMetadata;
 const read = (path) => fs.readFileSync(new URL(`../${path}`, import.meta.url), "utf8");
 const compile = (path, mocks = {}, globals = {}) => {
     const exports = {};
@@ -17,7 +18,13 @@ const compile = (path, mocks = {}, globals = {}) => {
         ts.transpileModule(source, {
             compilerOptions: { target: ts.ScriptTarget.ES2022, module: ts.ModuleKind.CommonJS },
         }).outputText,
-        { exports, require: (name) => mocks[name] || require(name), URLSearchParams, ...globals },
+        {
+            exports,
+            require: (name) =>
+                mocks[name] || (name === "./playlistMetadata" ? playlistMetadata : require(name)),
+            URLSearchParams,
+            ...globals,
+        },
     );
     return exports;
 };
@@ -25,6 +32,7 @@ const pictures = {
     toImageSrc: (value) => value,
     resolveTonieDisplayPicture: (...values) => values.find(Boolean),
 };
+playlistMetadata = compile("src/utils/audio/playlistMetadata.ts");
 const audio = compile("src/utils/audio/nativeCollection.ts", {
     "../../components/tonies/common/utils/imagePathUtils": pictures,
 });
@@ -43,7 +51,13 @@ const tonie = (changes = {}) => ({
     cachePreference: "taf",
     valid: false,
     cacheState: { tafComplete: false, v3Complete: true, preferredOriginalKind: "taf" },
-    playlist: { kind: "native_collection", tracks: ["First", "Last"] },
+    playlist: {
+        kind: "native_collection",
+        contentVersion: 42,
+        chapterCount: 2,
+        tracks: ["First", "Last"],
+        durations: [1.25, null],
+    },
     tonieInfo: { series: "Test", episode: "", tracks: [] },
     ...changes,
 });
@@ -155,18 +169,24 @@ test("uploaded native collection metadata wins consistently without changing cha
     const partial = await module.loadNativeCollectionFromSource(
         `lib://by/contentHash/${hash}/library-entry.json`,
     );
-    assert.equal(partial.tracks, undefined, "Never partially map chapter titles");
+    assert.deepEqual(
+        Array.from(partial.tracks),
+        ["Opening", ""],
+        "Missing names preserve their chapter slots",
+    );
 });
 
 test("player preserves Library metadata priority alongside native cache items", () => {
     const page = read("src/pages/tonies/TeddyAudioPlayerPage.tsx");
     assert.match(page, /\.\.\.standardItems, \.\.\.nativeItems, \.\.\.cachedNativeItems/);
-    assert.match(page, /record\.tonieInfo\?\.series \|\|\s+assigned\?\.playlist\?\.title/);
-    assert.match(page, /record\.tonieInfo\?\.tracks,\s+assigned\?\.playlist\?\.tracks/);
+    assert.match(page, /record\.tonieInfo\?\.series \|\| playlist\?\.title/);
+    assert.match(page, /record\.tonieInfo\?\.tracks,\s+playlist\?\.tracks/);
+    assert.doesNotMatch(page, /tonies\.find\(\(tonie\) => tonie\.source === source\)/);
     assert.match(
         page,
-        /resolveTonieDisplayPicture\(assigned\?\.customImage, assigned\?\.tonieInfo\.picture\)/,
+        /resolveTonieDisplayPicture\(imageTag\?\.customImage, imageTag\?\.tonieInfo\.picture\)/,
     );
+    assert.match(page, /tonie\.ruid\.toUpperCase\(\) === tonieRuid\.toUpperCase\(\)/);
 });
 
 test("download reasons are shared, translated and authoritative only when supplied by the backend", () => {
@@ -277,6 +297,7 @@ test("system audio keeps the legacy GET and body completion, ordinary tags use t
     for (const system of [true, false]) {
         const events = [];
         const submitted = [];
+        let stateIndex = 0;
         const response = { ok: true, blob: async () => events.push("body") };
         class Api {
             async apiGetTeddyCloudApiRaw(path) {
@@ -296,9 +317,20 @@ test("system audio keeps the legacy GET and body completion, ordinary tags use t
                 "../../../../types/teddyCloudNotificationTypes": {
                     NotificationTypeEnum: { Success: "success" },
                 },
-                "../../common/utils/cacheDownloadUtils": { cacheDownloadReason: () => "" },
+                "../../common/utils/cacheDownloadUtils": {
+                    cacheDownloadReason: () => "",
+                    isV3RefreshPending: () => false,
+                },
                 react: {
-                    useState: () => [false, (value) => submitted.push(value)],
+                    useState: (initial) => {
+                        const isSubmitted = stateIndex++ === 0;
+                        return [
+                            initial,
+                            (value) => {
+                                if (isSubmitted) submitted.push(value);
+                            },
+                        ];
+                    },
                     useRef: (current) => ({ current }),
                     useEffect: () => {},
                 },
@@ -344,4 +376,163 @@ test("both format options are global-only and all locales describe export and jo
     assert.match(actions, /apiPostTeddyCloudRaw\(/);
     assert.match(actions, /\/api\/content\/cache\//);
     assert.match(actions, /if \(systemTonie\) \{\s+await response\.blob\(\)/);
+});
+
+test("native manifest counts replace the Sandman and Benjamin figure catalogs", () => {
+    for (const [count, catalogCount] of [
+        [78, 10],
+        [24, 11],
+    ]) {
+        const tag = tonie({
+            tonieInfo: { tracks: Array(catalogCount).fill("Old model title") },
+            trackSeconds: Array(catalogCount).fill(0),
+            playlist: {
+                kind: "native_collection",
+                contentVersion: 42,
+                chapterCount: count,
+                tracks: Array(count).fill(""),
+            },
+        });
+        const tracks = playlistMetadata.resolvePlaybackTracks(tag, true, 42);
+        assert.equal(tracks.length, count);
+        assert.equal(
+            tracks.every((name) => name === ""),
+            true,
+        );
+        assert.equal(playlistMetadata.resolvePlaybackTracks(tag, true, 41).length, 0);
+        assert.equal(
+            playlistMetadata.resolvePlaybackTracks({ ...tag, playlist: undefined }, true, 42)
+                .length,
+            0,
+        );
+        assert.equal(
+            playlistMetadata.resolvePlaybackTracks(
+                { ...tag, playlist: { kind: "native_collection", tracks: ["Wrong"] } },
+                true,
+            ).length,
+            0,
+        );
+    }
+});
+
+test("native titles are positional and fractional unknown durations never become zero", () => {
+    const item = audio.nativeAudioToPlaybackItem(
+        {
+            id: "version",
+            chapters: Array.from({ length: 3 }, (_, index) => ({
+                index,
+                url: `/${index}.opus`,
+                size: 1,
+            })),
+        },
+        { tracks: [" Opening ", "", "Ending"], durations: [33.125, null, 12.875] },
+    );
+    assert.deepEqual(
+        Array.from(item.tracks, (track) => [track.title, track.durationSeconds]),
+        [
+            ["Opening", 33.125],
+            ["Chapter 2", undefined],
+            ["Ending", 12.875],
+        ],
+    );
+    assert.deepEqual(
+        Array.from(
+            playlistMetadata.mergeChapterTitles(
+                3,
+                ["Own", "", "End"],
+                ["Other", "Middle", "Wrong"],
+            ),
+        ),
+        ["Own", "Middle", "End"],
+    );
+    assert.deepEqual(
+        Array.from(playlistMetadata.mergeChapterDurations(3, [1.25, null, NaN], [9, 2.75, -1])),
+        [1.25, 2.75, null],
+    );
+    assert.equal(
+        playlistMetadata.playlistTotalSeconds({ chapterCount: 3, durations: [1.25, null, 2.75] }),
+        undefined,
+    );
+    assert.equal(
+        playlistMetadata.playlistTotalSeconds({ chapterCount: 3, durations: [1.25, 2.75] }),
+        undefined,
+    );
+    assert.equal(
+        playlistMetadata.playlistTotalSeconds({ chapterCount: 2, durations: [1.75, 2.75] }),
+        4.5,
+    );
+    assert.equal(
+        playlistMetadata.matchingNativePlaylist({ kind: "native_collection", chapterCount: 2 }, 42),
+        undefined,
+    );
+});
+
+test("native cache playback ignores metadata from another version and physical figure names", async () => {
+    const { loadTonieNativePlaybackItem } = tonieModule({
+        fetch: async () => ({
+            ok: true,
+            json: async () => ({
+                contentVersion: 43,
+                chapters: [
+                    { index: 0, url: "/api/content/native/tag/0.opus?version=43", size: 4 },
+                    { index: 1, url: "/api/content/native/tag/1.opus?version=43", size: 3 },
+                ],
+            }),
+        }),
+    });
+    const item = await loadTonieNativePlaybackItem(
+        tonie({
+            sourceInfo: { series: "Unproven content title", tracks: ["Wrong", "Wrong"] },
+            tonieInfo: { series: "Figure", tracks: ["Old", "Old"] },
+        }),
+        "BOX",
+    );
+    assert.equal(item.title.startsWith("TB2 "), true);
+    assert.deepEqual(
+        Array.from(item.tracks, (track) => [track.title, track.durationSeconds]),
+        [
+            ["Chapter 1", undefined],
+            ["Chapter 2", undefined],
+        ],
+    );
+});
+
+test("TAF legacy chapter selection is unchanged and native metadata notices are translated", () => {
+    const tag = tonie({
+        playlist: undefined,
+        source: "lib://test.taf",
+        sourceInfo: { tracks: ["A", "B"] },
+        trackSeconds: [0, 61],
+    });
+    assert.deepEqual(Array.from(playlistMetadata.resolvePlaybackTracks(tag)), ["A", "B"]);
+    assert.deepEqual(
+        Array.from(
+            playlistMetadata.resolvePlaybackTracks({
+                ...tag,
+                playlist: { kind: "direct_taf", chapterCount: 3, tracks: ["A"] },
+            }),
+        ),
+        ["A", "", ""],
+    );
+    for (const locale of ["de", "en", "fr", "es", "tlh"]) {
+        const messages = JSON.parse(read(`public/translations/${locale}.json`)).tonies.infoModal
+            .nativeMetadata;
+        for (const key of ["pending", "partial", "unavailable", "totalDuration"])
+            assert.ok(messages[key], `${locale}: ${key}`);
+    }
+});
+
+test("runtime metadata reload keeps request order and box, tag, version and revision identity", () => {
+    const card = read("src/components/tonieboxes/tonieboxcard/TonieboxCard.tsx");
+    assert.match(
+        card,
+        /tonieboxCard\.ID,\s*currentRuid,\s*currentContentVersion,\s*runtime\?\.playback\.metadataRevision/,
+    );
+    assert.match(card, /\}, \[metadataKey\]\)/);
+    assert.match(card, /request !== metadataRequest\.current/);
+    assert.match(card, /currentMetadataKey\.current !== metadataKey/);
+    assert.match(
+        card,
+        /tonie=\{loadedMetadataKey === metadataKey \? nowPlayingTonie : undefined\}/,
+    );
 });

@@ -10,11 +10,14 @@ export type TonieInfo = {
 export type ContentPlaylist = {
     kind: "direct_taf" | "native_collection" | "tap";
     editable: boolean;
-    chapterCount: number;
+    chapterCount?: number;
     title: string;
     tracks: string[];
-    durations: number[];
+    durations: (number | null)[];
     contentVersion?: number;
+    metadataState?: "pending" | "ready" | "partial" | "unavailable";
+    metadataReason?: string;
+    metadataRevision?: string;
     shuffleMode?: 0 | 1 | 2;
     editTarget?: string;
 };

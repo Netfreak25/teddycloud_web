@@ -24,7 +24,7 @@ export interface NativeCollectionSummary {
     chapters: NativeCollectionChapter[];
     title?: string;
     tracks?: string[];
-    durations?: number[];
+    durations?: (number | null)[];
 }
 
 export interface NativeCollectionChapter {

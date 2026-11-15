@@ -5,6 +5,7 @@ import {
     TonieplayCollectionSummary,
 } from "../../types/fileBrowserTypes";
 import { AudioPlaybackItem } from "../../types/audioPlaybackTypes";
+import { knownDuration, mergeChapterDurations, mergeChapterTitles } from "./playlistMetadata";
 
 const apiBase = () => import.meta.env.VITE_APP_TEDDYCLOUD_API_URL || "";
 
@@ -99,12 +100,8 @@ export const loadNativeCollectionFromSource = async (
         manifestPath,
         chapters,
         title: typeof manifest.title === "string" ? manifest.title.trim() || undefined : undefined,
-        tracks: chapters.every((chapter) => chapter.title)
-            ? chapters.map((chapter) => chapter.title!)
-            : undefined,
-        durations: chapters.every((chapter) => chapter.durationSeconds !== undefined)
-            ? chapters.map((chapter) => chapter.durationSeconds!)
-            : undefined,
+        tracks: chapters.map((chapter) => chapter.title || ""),
+        durations: chapters.map((chapter) => chapter.durationSeconds ?? null),
     };
 };
 
@@ -126,15 +123,16 @@ export const nativeCollectionToPlaybackItem = (
         {
             ...metadata,
             title: collection.title || metadata?.title,
-            tracks:
-                collection.tracks?.length === collection.chapterCount &&
-                collection.tracks.every((title) => title.trim())
-                    ? collection.tracks
-                    : metadata?.tracks,
-            durations:
-                collection.durations?.length === collection.chapterCount
-                    ? collection.durations
-                    : metadata?.durations,
+            tracks: mergeChapterTitles(
+                collection.chapterCount,
+                collection.tracks,
+                metadata?.tracks,
+            ),
+            durations: mergeChapterDurations(
+                collection.chapterCount,
+                collection.durations,
+                metadata?.durations,
+            ),
         },
     );
 
@@ -143,7 +141,7 @@ export type NativeAudioMetadata = {
     subtitle?: string;
     picture?: string;
     tracks?: string[];
-    durations?: number[];
+    durations?: (number | null)[];
     fallbackTrackTitle?: (number: number) => string;
 };
 
@@ -158,11 +156,7 @@ export const nativeAudioToPlaybackItem = (
     audio: NativeAudio,
     metadata?: NativeAudioMetadata,
 ): AudioPlaybackItem => {
-    const metadataTracks =
-        metadata?.tracks?.length === audio.chapters.length &&
-        metadata.tracks.every((title) => title.trim().length > 0)
-            ? metadata.tracks.map((title) => title.trim())
-            : undefined;
+    const metadataTracks = mergeChapterTitles(audio.chapters.length, metadata?.tracks);
     const trackTitles = audio.chapters.map(
         (_chapter, index) =>
             metadataTracks?.[index] ||
@@ -186,8 +180,7 @@ export const nativeAudioToPlaybackItem = (
             startSeconds: 0,
             durationSeconds:
                 metadata?.durations?.length === audio.chapters.length &&
-                Number.isFinite(metadata.durations[index]) &&
-                metadata.durations[index] >= 0
+                knownDuration(metadata.durations[index])
                     ? metadata.durations[index]
                     : undefined,
         })),

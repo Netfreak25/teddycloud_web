@@ -8,6 +8,11 @@ import {
     NativeAudioMetadata,
     nativeAudioToPlaybackItem,
 } from "./nativeCollection";
+import {
+    matchingNativePlaylist,
+    mergeChapterDurations,
+    mergeChapterTitles,
+} from "./playlistMetadata";
 
 /** Respect assigned sources; otherwise mirror the original-cache fallback without changing it. */
 export const usesNativeTonieAudio = (tonie: TonieCardProps): boolean => {
@@ -31,6 +36,7 @@ export const loadTonieNativePlaybackItem = async (
     if (!usesNativeTonieAudio(tonie)) throw new Error("No native audio selected");
     const source = tonie.source?.trim() || tonie.cacheState?.v3Source;
     let audio: NativeAudio;
+    let contentVersion = tonie.source?.trim() ? undefined : tonie.cacheState?.v3ContentVersion;
     let collectionMetadata: NativeAudioMetadata = {};
     if (source) {
         const collection = await loadNativeCollectionFromSource(source, overlay);
@@ -62,6 +68,7 @@ export const loadTonieNativePlaybackItem = async (
         ) {
             throw new Error("Invalid native audio response");
         }
+        contentVersion = payload.contentVersion;
         audio = {
             id: `native:${overlay}:${tonie.ruid}:${payload.contentVersion}`,
             chapters: payload.chapters.map(
@@ -80,27 +87,22 @@ export const loadTonieNativePlaybackItem = async (
             ),
         };
     }
-    const tracks = [
-        collectionMetadata.tracks,
-        tonie.playlist?.tracks,
-        tonie.sourceInfo?.tracks,
-        tonie.tonieInfo.tracks,
-    ].find(
-        (titles) =>
-            titles?.length === audio.chapters.length && titles.every((title) => title.trim()),
-    );
+    const playlist = matchingNativePlaylist(tonie.playlist, contentVersion);
     return nativeAudioToPlaybackItem(audio, {
-        title:
-            collectionMetadata.title ||
-            tonie.playlist?.title ||
-            tonie.sourceInfo?.series ||
-            tonie.tonieInfo.series,
-        subtitle: tonie.sourceInfo?.episode || tonie.tonieInfo.episode,
+        title: collectionMetadata.title || playlist?.title,
         picture:
             tonie.sourceInfo?.picture ||
             resolveTonieDisplayPicture(tonie.customImage, tonie.tonieInfo.picture),
-        tracks,
-        durations: collectionMetadata.durations,
+        tracks: mergeChapterTitles(
+            audio.chapters.length,
+            collectionMetadata.tracks,
+            playlist?.tracks,
+        ),
+        durations: mergeChapterDurations(
+            audio.chapters.length,
+            collectionMetadata.durations,
+            playlist?.durations,
+        ),
         fallbackTrackTitle,
     });
 };

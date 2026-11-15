@@ -17,6 +17,12 @@ import { useAudioContext } from "../../../../provider/AudioProvider";
 import { downloadNativeAudioZip } from "../../../../utils/audio/nativeCollection";
 import { cacheDownloadReason } from "../utils/cacheDownloadUtils";
 import {
+    knownDuration,
+    playlistTotalSeconds,
+    resolvePlaybackTracks,
+} from "../../../../utils/audio/playlistMetadata";
+import { formatPlaybackTime } from "../../../tonieboxes/tonieboxcard/live/formatTime";
+import {
     loadTonieNativePlaybackItem,
     usesNativeTonieAudio,
 } from "../../../../utils/audio/tonieAudio";
@@ -67,6 +73,15 @@ const TonieInformationModal: React.FC<InformationModalProps> = ({
         "ruid" in tonieCardOrTAFRecord && usesNativeTonieAudio(tonieCardOrTAFRecord)
             ? tonieCardOrTAFRecord
             : undefined;
+    const nativeMetadataTonie =
+        "ruid" in tonieCardOrTAFRecord &&
+        (tonieCardOrTAFRecord.playlist?.kind === "native_collection" || nativeTonie)
+            ? tonieCardOrTAFRecord
+            : undefined;
+    const nativeTotalSeconds = playlistTotalSeconds(nativeMetadataTonie?.playlist);
+    const nativeMetadataState =
+        nativeMetadataTonie?.playlist?.metadataState ??
+        (nativeMetadataTonie?.playlist?.chapterCount === undefined ? "unavailable" : undefined);
     const downloadBlockedReason = cacheDownloadReason(
         "cacheState" in tonieCardOrTAFRecord
             ? tonieCardOrTAFRecord.cacheState?.downloadBlockedReason
@@ -185,13 +200,14 @@ const TonieInformationModal: React.FC<InformationModalProps> = ({
             ? ` - ${tonieCardOrTAFRecord.tonieInfo?.episode}`
             : "");
 
-    const sourceTitle =
-        "sourceInfo" in tonieCardOrTAFRecord
-            ? `${tonieCardOrTAFRecord.sourceInfo?.series}` +
-              (tonieCardOrTAFRecord.sourceInfo?.episode
-                  ? ` - ${tonieCardOrTAFRecord.sourceInfo?.episode}`
-                  : "")
-            : "";
+    const sourceTitle = nativeMetadataTonie
+        ? nativeMetadataTonie.playlist?.title?.trim() || ""
+        : "sourceInfo" in tonieCardOrTAFRecord
+          ? `${tonieCardOrTAFRecord.sourceInfo?.series}` +
+            (tonieCardOrTAFRecord.sourceInfo?.episode
+                ? ` - ${tonieCardOrTAFRecord.sourceInfo?.episode}`
+                : "")
+          : "";
 
     const title =
         (informationFromSource ? sourceTitle : modelTitle) ||
@@ -402,19 +418,50 @@ const TonieInformationModal: React.FC<InformationModalProps> = ({
                     ) : (
                         ""
                     )}
-                    {nativeTonie ? (
+                    {nativeMetadataTonie ? (
                         <>
                             <strong>{t("tonies.infoModal.tracklist")}</strong>
+                            {nativeMetadataState && nativeMetadataState !== "ready" && (
+                                <Typography.Paragraph type="secondary" role="status">
+                                    {t(`tonies.infoModal.nativeMetadata.${nativeMetadataState}`)}
+                                </Typography.Paragraph>
+                            )}
+                            {nativeTotalSeconds !== undefined && (
+                                <Typography.Paragraph type="secondary">
+                                    {t("tonies.infoModal.nativeMetadata.totalDuration", {
+                                        time: formatPlaybackTime(Math.round(nativeTotalSeconds)),
+                                    })}
+                                </Typography.Paragraph>
+                            )}
                             <Flex vertical gap={4}>
-                                {(nativeTonie.playlist?.tracks || nativeTonie.tonieInfo.tracks).map(
+                                {resolvePlaybackTracks(nativeMetadataTonie, true).map(
                                     (track, index) => (
                                         <Flex key={index} gap={16}>
-                                            <PlayCircleOutlined
-                                                onClick={() => void handleNativePlay(index)}
-                                            />
+                                            {nativeTonie && (
+                                                <PlayCircleOutlined
+                                                    onClick={() => void handleNativePlay(index)}
+                                                />
+                                            )}
                                             <span>
-                                                {index + 1}. {track}
+                                                {index + 1}.{" "}
+                                                {track ||
+                                                    t("tonieboxes.live.chapter", {
+                                                        number: index + 1,
+                                                    })}
                                             </span>
+                                            <Text type="secondary">
+                                                {knownDuration(
+                                                    nativeMetadataTonie.playlist?.durations?.[
+                                                        index
+                                                    ],
+                                                )
+                                                    ? formatPlaybackTime(
+                                                          nativeMetadataTonie.playlist!.durations[
+                                                              index
+                                                          ]!,
+                                                      )
+                                                    : "—"}
+                                            </Text>
                                         </Flex>
                                     ),
                                 )}

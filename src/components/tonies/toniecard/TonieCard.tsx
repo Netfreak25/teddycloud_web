@@ -175,10 +175,12 @@ export const TonieCard: React.FC<{
         (tonieCard.tonieInfo.episode ? ` - ${tonieCard.tonieInfo.episode}` : "");
 
     const sourceTitle =
-        "sourceInfo" in tonieCard
-            ? `${tonieCard.sourceInfo.series}` +
-              (tonieCard.sourceInfo.episode ? ` - ${tonieCard.sourceInfo.episode}` : "")
-            : "";
+        tonieCard.playlist?.kind === "native_collection"
+            ? tonieCard.playlist.title?.trim() || ""
+            : "sourceInfo" in tonieCard
+              ? `${tonieCard.sourceInfo.series}` +
+                (tonieCard.sourceInfo.episode ? ` - ${tonieCard.sourceInfo.episode}` : "")
+              : "";
 
     const showSourceInfoPicture =
         showSourceInfo &&

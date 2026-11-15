@@ -22,6 +22,8 @@ const compile = (path, mocks = {}) => {
     return exports;
 };
 const images = compile("src/components/tonies/common/utils/imagePathUtils.ts");
+const playlistMetadata = compile("src/utils/audio/playlistMetadata.ts");
+const formatTime = compile("src/components/tonieboxes/tonieboxcard/live/formatTime.ts");
 const effects = [];
 const Modal = compile("src/components/tonies/common/modals/TonieInformationModal.tsx", {
     react: {
@@ -31,7 +33,7 @@ const Modal = compile("src/components/tonies/common/modals/TonieInformationModal
     "react-i18next": { useTranslation: () => ({ t: (key) => key }) },
     antd: {
         Modal: "modal",
-        Typography: { Text: "text" },
+        Typography: { Text: "text", Paragraph: "paragraph" },
         Button: "button",
         Tooltip: "tooltip",
         Flex: "flex",
@@ -47,6 +49,8 @@ const Modal = compile("src/components/tonies/common/modals/TonieInformationModal
     },
     "../../../../provider/AudioProvider": { useAudioContext: () => ({}) },
     "../../../../utils/audio/nativeCollection": {},
+    "../../../../utils/audio/playlistMetadata": playlistMetadata,
+    "../../../tonieboxes/tonieboxcard/live/formatTime": formatTime,
     "../utils/cacheDownloadUtils": { cacheDownloadReason: () => "" },
     "../../../../utils/audio/tonieAudio": { usesNativeTonieAudio: () => false },
     "../utils/imagePathUtils": images,
@@ -100,4 +104,29 @@ test("existing catalog titles and covers retain priority", () => {
         "Series - Episode",
     );
     assert.equal(nodes(tree).find((node) => node.type === "img").props.src, "/cover.png");
+});
+
+test("native info uses actual chapter slots and renders an unknown duration explicitly", () => {
+    const tree = Modal({
+        open: true,
+        onClose: () => {},
+        tonieCardOrTAFRecord: {
+            ruid: "0123456789ABCDEF",
+            tonieInfo: { series: "Figure", tracks: ["Old model chapter"] },
+            playlist: {
+                kind: "native_collection",
+                chapterCount: 2,
+                tracks: ["Correct", ""],
+                durations: [33.25, null],
+                metadataState: "partial",
+            },
+        },
+    });
+    assert.ok(text(tree).includes("Correct"));
+    assert.ok(text(tree).includes("tonieboxes.live.chapter"));
+    assert.ok(text(tree).includes("0:33"));
+    assert.ok(text(tree).includes("—"));
+    assert.ok(text(tree).includes("tonies.infoModal.nativeMetadata.partial"));
+    assert.ok(!text(tree).includes("Old model chapter"));
+    assert.ok(!text(tree).includes("totalDuration"));
 });

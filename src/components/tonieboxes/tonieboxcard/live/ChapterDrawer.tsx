@@ -1,16 +1,18 @@
 import { useEffect, useState } from "react";
-import { Button, Drawer, Input, List, Space, theme } from "antd";
+import { Button, Drawer, Input, List, Space, Typography, theme } from "antd";
 import { CaretRightOutlined, CloseOutlined, EditOutlined, SaveOutlined } from "@ant-design/icons";
 import { useTranslation } from "react-i18next";
 
 import { formatPlaybackTime } from "./formatTime";
+import { knownDuration } from "../../../../utils/audio/playlistMetadata";
 
 type ChapterDrawerProps = {
     open: boolean;
     title?: string;
     editableTitle?: string;
     tracks: string[];
-    trackDurations?: number[];
+    trackDurations?: (number | null)[];
+    metadataNotice?: string;
     currentChapter: number | null;
     playbackEnabled: boolean;
     loadingChapter?: number;
@@ -29,6 +31,7 @@ export const ChapterDrawer = ({
     editableTitle,
     tracks,
     trackDurations,
+    metadataNotice,
     currentChapter,
     playbackEnabled,
     loadingChapter,
@@ -136,6 +139,11 @@ export const ChapterDrawer = ({
                     style={{ marginBottom: 16 }}
                 />
             )}
+            {metadataNotice && (
+                <Typography.Paragraph type="secondary" role="status">
+                    {metadataNotice}
+                </Typography.Paragraph>
+            )}
             <List
                 dataSource={editing ? draftTracks : tracks}
                 renderItem={(track, index) => (
@@ -181,13 +189,11 @@ export const ChapterDrawer = ({
                                     `${index + 1}. ${track || t("tonieboxes.live.chapter", { number: index + 1 })}`
                                 )
                             }
-                            description={
-                                trackDurations?.[index] !== undefined
-                                    ? t("tonieboxes.live.chapterDuration", {
-                                          time: formatPlaybackTime(trackDurations[index]),
-                                      })
-                                    : undefined
-                            }
+                            description={t("tonieboxes.live.chapterDuration", {
+                                time: knownDuration(trackDurations?.[index])
+                                    ? formatPlaybackTime(trackDurations![index]!)
+                                    : "—",
+                            })}
                         />
                     </List.Item>
                 )}

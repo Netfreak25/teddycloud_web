@@ -27,6 +27,7 @@ import {
 import { tonieToPlaybackItem } from "../../utils/audio/playbackItem";
 import { resolveTonieDisplayPicture } from "../../components/tonies/common/utils/imagePathUtils";
 import { loadTonieNativePlaybackItem, usesNativeTonieAudio } from "../../utils/audio/tonieAudio";
+import { matchingNativePlaylist, mergeChapterTitles } from "../../utils/audio/playlistMetadata";
 
 type TeddyAudioPlayerPageProps = {
     standalone?: boolean;
@@ -169,38 +170,35 @@ export const TeddyAudioPlayerPage: React.FC<TeddyAudioPlayerPageProps> = ({
         const nativeItems = nativeRecords.map((record) => {
             const collection = record.nativeCollection!;
             const source = `lib://by/contentHash/${collection.contentHash}/library-entry.json`;
-            const assigned = tonies.find((tonie) => tonie.source === source);
-            const title =
-                record.tonieInfo?.series ||
-                assigned?.playlist?.title ||
-                assigned?.sourceInfo?.series ||
-                assigned?.tonieInfo.series;
-            const subtitle =
-                record.tonieInfo?.episode ||
-                assigned?.sourceInfo?.episode ||
-                assigned?.tonieInfo.episode;
+            // A shared library entry must never inherit another tag's content or personal image.
+            const imageTag = tonieRuid
+                ? tonies.find(
+                      (tonie) =>
+                          tonie.ruid.toUpperCase() === tonieRuid.toUpperCase() &&
+                          (tonie.source || tonie.cacheState?.v3Source) === source,
+                  )
+                : undefined;
+            const playlist = matchingNativePlaylist(imageTag?.playlist);
+            const title = record.tonieInfo?.series || playlist?.title;
+            const subtitle = record.tonieInfo?.episode;
             const libraryPicture = record.tonieInfo?.picture;
             const picture =
                 (libraryPicture && !libraryPicture.endsWith("img_unknown.png")
                     ? libraryPicture
                     : undefined) ||
-                assigned?.sourceInfo?.picture ||
-                resolveTonieDisplayPicture(assigned?.customImage, assigned?.tonieInfo.picture);
-            const tracks = [
+                imageTag?.sourceInfo?.picture ||
+                resolveTonieDisplayPicture(imageTag?.customImage, imageTag?.tonieInfo.picture);
+            const tracks = mergeChapterTitles(
+                collection.chapterCount,
                 record.tonieInfo?.tracks,
-                assigned?.playlist?.tracks,
-                assigned?.sourceInfo?.tracks,
-                assigned?.tonieInfo.tracks,
-            ].find(
-                (candidate) =>
-                    candidate?.length === collection.chapterCount &&
-                    candidate.every((track) => track.trim().length > 0),
+                playlist?.tracks,
             );
             return nativeCollectionToPlaybackItem(collection, overlay, {
                 title,
                 subtitle,
                 picture,
                 tracks,
+                durations: playlist?.durations,
                 fallbackTrackTitle: (number) => t("tonieboxes.live.chapter", { number }),
             });
         });

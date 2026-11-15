@@ -44,6 +44,10 @@ import { TonieCardProps } from "../../../../types/tonieTypes";
 import { ChapterDrawer } from "./ChapterDrawer";
 import { formatPlaybackTime } from "./formatTime";
 import {
+    matchingNativePlaylist,
+    resolvePlaybackTracks,
+} from "../../../../utils/audio/playlistMetadata";
+import {
     resolveTonieDisplayPicture,
     toImageSrc,
 } from "../../../tonies/common/utils/imagePathUtils";
@@ -72,44 +76,6 @@ const resolveTapEditRoute = (editTarget?: string): string | undefined => {
     if (directory) params.set("path", directory);
     params.set("editTap", filename);
     return `/tonies/library?${params.toString()}`;
-};
-
-const resolvePlaybackTracks = (tonie?: TonieCardProps): string[] => {
-    const sourceTracks = tonie?.sourceInfo?.tracks ?? [];
-    const assignedTracks = tonie?.tonieInfo.tracks ?? [];
-
-    if (tonie?.playlist?.kind === "tap") {
-        return Array.from({ length: tonie.playlist.chapterCount }, (_, index) => {
-            return tonie.playlist?.tracks[index]?.trim() || "";
-        });
-    }
-
-    if (
-        tonie?.playlist?.kind === "direct_taf" ||
-        tonie?.playlist?.kind === "native_collection" ||
-        tonie?.playlist?.editable
-    ) {
-        return Array.from({ length: tonie.playlist.chapterCount }, (_, index) => {
-            return tonie.playlist?.tracks[index]?.trim() || "";
-        });
-    }
-
-    if (tonie?.source?.trim()) {
-        const trackCount = tonie.trackSeconds.length || sourceTracks.length;
-        return Array.from({ length: trackCount }, (_, index) => {
-            return sourceTracks[index]?.trim() || "";
-        });
-    }
-
-    const trackCount = Math.max(
-        sourceTracks.length,
-        assignedTracks.length,
-        tonie?.trackSeconds.length ?? 0,
-    );
-
-    return Array.from({ length: trackCount }, (_, index) => {
-        return sourceTracks[index]?.trim() || assignedTracks[index]?.trim() || "";
-    });
 };
 
 type TonieboxLiveControlsProps = {
@@ -147,7 +113,18 @@ export const TonieboxLiveControls = ({
     const playback = runtime.playback;
     const hasActivePlayback = playback.valid && playback.tonie !== null;
     const commandPending = commandInFlight !== undefined;
-    const tracks = useMemo(() => resolvePlaybackTracks(tonie), [tonie]);
+    const tracks = useMemo(
+        () =>
+            resolvePlaybackTracks(tonie, playback.contentVersion != null, playback.contentVersion),
+        [tonie, playback.contentVersion],
+    );
+    const nativePlaylist = matchingNativePlaylist(tonie?.playlist, playback.contentVersion);
+    const nativeContent =
+        tonie?.playlist?.kind === "native_collection" ||
+        (!tonie?.playlist && playback.contentVersion != null);
+    const metadataState =
+        nativePlaylist?.metadataState ??
+        (nativePlaylist?.chapterCount === undefined ? "unavailable" : undefined);
     const chapterIndex = playback.chapter;
     const chapterNumber = chapterIndex === null ? undefined : chapterIndex + 1;
     const currentTrack =
@@ -364,16 +341,18 @@ export const TonieboxLiveControls = ({
 
     const controlButtonStyle = { width: CONTROL_SIZE, height: CONTROL_SIZE };
     const customContent = Boolean(tonie?.source?.trim());
-    const series = customContent
-        ? tonie?.playlist?.title?.trim() || t("tonieboxes.live.customContent")
-        : tonie?.tonieInfo.series || t("tonieboxes.live.unknownTonie");
-    const episode = customContent ? undefined : tonie?.tonieInfo.episode;
+    const series = nativeContent
+        ? nativePlaylist?.title?.trim() || t("tonieboxes.live.unknownTonie")
+        : customContent
+          ? tonie?.playlist?.title?.trim() || t("tonieboxes.live.customContent")
+          : tonie?.tonieInfo.series || t("tonieboxes.live.unknownTonie");
+    const episode = customContent || nativeContent ? undefined : tonie?.tonieInfo.episode;
     const chapterLabel =
         chapterNumber === undefined
             ? undefined
             : tracks.length > 0
               ? `${chapterNumber}/${tracks.length}`
-              : chapterNumber.toString();
+              : `${chapterNumber}/—`;
     const bedtimeTooltip = runtime.bedtime.valid
         ? [
               runtime.bedtime.state,
@@ -645,7 +624,14 @@ export const TonieboxLiveControls = ({
                 title={series}
                 editableTitle={customContent ? tonie?.playlist?.title : undefined}
                 tracks={tracks}
-                trackDurations={tonie?.playlist?.durations}
+                trackDurations={
+                    nativeContent ? nativePlaylist?.durations : tonie?.playlist?.durations
+                }
+                metadataNotice={
+                    nativeContent && metadataState && metadataState !== "ready"
+                        ? t(`tonies.infoModal.nativeMetadata.${metadataState}`)
+                        : undefined
+                }
                 currentChapter={chapterIndex}
                 playbackEnabled={playbackEnabled && !commandPending}
                 loadingChapter={

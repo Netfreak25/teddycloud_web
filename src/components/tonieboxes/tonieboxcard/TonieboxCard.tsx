@@ -1,6 +1,6 @@
 import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import React, { JSX, useEffect, useState } from "react";
+import React, { JSX, useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { Card, theme, Tooltip } from "antd";
@@ -84,10 +84,20 @@ export const TonieboxCard: React.FC<{
     const [tonieboxAccessApi, setTonieboxAccessApi] = useState<boolean>(true);
     const [modalKey, setModalKey] = useState(0);
     const [nowPlayingTonie, setNowPlayingTonie] = useState<TonieCardProps>();
+    const [loadedMetadataKey, setLoadedMetadataKey] = useState("");
+    const metadataRequest = useRef(0);
 
     const runtime = tonieboxCard.runtime;
     const currentRuid = runtime?.playback.ruid;
     const currentContentVersion = runtime?.playback.contentVersion;
+    const metadataKey = JSON.stringify([
+        tonieboxCard.ID,
+        currentRuid,
+        currentContentVersion,
+        runtime?.playback.metadataRevision,
+    ]);
+    const currentMetadataKey = useRef(metadataKey);
+    currentMetadataKey.current = metadataKey;
     const isNowPlaying = Boolean(
         runtime?.online && runtime.playback.valid && runtime.playback.tonie,
     );
@@ -111,6 +121,7 @@ export const TonieboxCard: React.FC<{
     }, [runtime?.lastConnection, runtime?.online]);
 
     useEffect(() => {
+        const request = ++metadataRequest.current;
         if (!currentRuid || !/^[0-9a-f]{16}$/i.test(currentRuid)) {
             setNowPlayingTonie(undefined);
             return;
@@ -119,23 +130,31 @@ export const TonieboxCard: React.FC<{
         let cancelled = false;
         api.apiGetTagInfo(currentRuid, tonieboxCard.ID, currentContentVersion)
             .then((tonie) => {
-                if (cancelled) return;
+                if (
+                    cancelled ||
+                    request !== metadataRequest.current ||
+                    currentMetadataKey.current !== metadataKey
+                )
+                    return;
                 setNowPlayingTonie(tonie);
+                setLoadedMetadataKey(metadataKey);
                 const playedAt = runtime?.playback.updatedAt
                     ? new Date(runtime.playback.updatedAt * 1000).toLocaleString()
                     : undefined;
                 setLastPlayedTonie([tonie], playedAt);
             })
             .catch(() => {
-                if (!cancelled) setNowPlayingTonie(undefined);
+                if (!cancelled && request === metadataRequest.current)
+                    setNowPlayingTonie(undefined);
             });
 
         return () => {
             cancelled = true;
+            metadataRequest.current++;
         };
         // setLastPlayedTonie is stable for the lifetime of this card.
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [currentContentVersion, currentRuid, tonieboxCard.ID]);
+    }, [metadataKey]);
 
     useEffect(() => {
         const fetchTonieboxApiAccess = async () => {
@@ -274,12 +293,16 @@ export const TonieboxCard: React.FC<{
         if (!tonie || tonie.length === 0) return;
 
         const customContent = Boolean(tonie[0].source?.trim());
-        const displayTitle = customContent
-            ? tonie[0].playlist?.title?.trim() ||
-              tonie[0].sourceInfo?.series?.trim() ||
-              tonie[0].tonieInfo.series
-            : tonie[0].tonieInfo.series;
-        const displayEpisode = customContent ? undefined : tonie[0].tonieInfo.episode;
+        const nativeContent = tonie[0].playlist?.kind === "native_collection";
+        const displayTitle = nativeContent
+            ? tonie[0].playlist?.title?.trim() || t("tonieboxes.live.unknownTonie")
+            : customContent
+              ? tonie[0].playlist?.title?.trim() ||
+                tonie[0].sourceInfo?.series?.trim() ||
+                tonie[0].tonieInfo.series
+              : tonie[0].tonieInfo.series;
+        const displayEpisode =
+            customContent || nativeContent ? undefined : tonie[0].tonieInfo.episode;
 
         setLastPlayedTonieName(
             <Link to={`/tonies?tonieRUID=${tonie[0].ruid}&overlay=${tonieboxCard.ID}`}>
@@ -319,8 +342,12 @@ export const TonieboxCard: React.FC<{
     const refreshNowPlayingTonie = async () => {
         if (!currentRuid || !/^[0-9a-f]{16}$/i.test(currentRuid)) return;
 
+        const request = ++metadataRequest.current;
         const tonie = await api.apiGetTagInfo(currentRuid, tonieboxCard.ID, currentContentVersion);
+        if (request !== metadataRequest.current || currentMetadataKey.current !== metadataKey)
+            return;
         setNowPlayingTonie(tonie);
+        setLoadedMetadataKey(metadataKey);
         const playedAt = runtime?.playback.updatedAt
             ? new Date(runtime.playback.updatedAt * 1000).toLocaleString()
             : undefined;
@@ -719,7 +746,7 @@ export const TonieboxCard: React.FC<{
                     <TonieboxLiveControls
                         overlay={tonieboxCard.ID}
                         runtime={runtime}
-                        tonie={nowPlayingTonie}
+                        tonie={loadedMetadataKey === metadataKey ? nowPlayingTonie : undefined}
                         readOnly={readOnly}
                         onRefresh={onRefresh}
                         onTonieRefresh={refreshNowPlayingTonie}

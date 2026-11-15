@@ -1,9 +1,11 @@
 import React from "react";
-import { Modal, Divider, Flex } from "antd";
+import { Modal, Divider, Flex, Typography } from "antd";
 import { PlayCircleOutlined } from "@ant-design/icons";
 import { useTranslation } from "react-i18next";
 
 import { AudioPlaybackItem } from "../../../../types/audioPlaybackTypes";
+import { knownDuration } from "../../../../utils/audio/playlistMetadata";
+import { formatPlaybackTime } from "../../../tonieboxes/tonieboxcard/live/formatTime";
 
 interface TracklistModalProps {
     open: boolean;
@@ -45,6 +47,13 @@ const TracklistModal: React.FC<TracklistModalProps> = ({
                                 <div>
                                     {index + 1}. {track.title}
                                 </div>
+                                {playbackItem.kind === "tb2_native_collection" && (
+                                    <Typography.Text type="secondary">
+                                        {knownDuration(track.durationSeconds)
+                                            ? formatPlaybackTime(track.durationSeconds)
+                                            : "—"}
+                                    </Typography.Text>
+                                )}
                             </div>
                             {index < tracks.length - 1 && <Divider style={{ margin: "8px 0" }} />}
                         </div>
